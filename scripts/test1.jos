@@ -1,0 +1,48 @@
+def getSchema(csv){
+	schema1=extractTextSchema(csv)
+	update schema1 set type = "SYMBOL" where name="stockcode"
+	update schema1 set type = "STRING" where name="TransactionTime"
+	update schema1 set type = "STRING" where name="HostTime"
+	//update schema1 set name=`Amount where name="TotalAmount" 
+	return schema1
+   }
+
+def string2time(mutable t){
+	TransactionTime =temporalParse(lpad((exec TransactionTime from t),9,"0"),"HHmmssSSS")
+	HostTime =temporalParse(lpad((exec HostTime from t),9,"0"),"HHmmssSSS")
+	t.replaceColumn!(`HostTime,HostTime)
+	t.replaceColumn!(`TransactionTime,TransactionTime)
+    return t
+    }
+
+def createTB(dbName,tableName){ 
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+	columns =`Date`stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime
+	type=[DATE,SYMBOL,INT,INT,INT,TIME,DOUBLE,INT,CHAR,INT,INT,TIME]
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+   }
+
+def readCSV(filepath, stock_date){
+    schema1=getSchema(filepath)
+    t = loadText(filepath,,schema1)
+    t = string2time(t)
+    targettable = loadTable("dfs://history","testtable")
+    addColumn(t,["Date", "stockcode"],[DATE,SYMBOL])
+    update t set stockcode = "000001"
+    update t set Date = stock_date
+    reorderColumns!(t,`Date`stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime)
+    //print(t)
+    targettable.append!(t)
+}
+
+dbName = "dfs://history"
+tableName = "orderBook"
+//filepath = "/mnt/ProductData/Level2CSV/order/20220104/000001.csv"
+//createTB(dbName, tableName)
+//readCSV(filepath, date("2022.01.04"))
+tb = loadTable(dbName, tableName)
+
+select top 100* from tb

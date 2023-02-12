@@ -1,0 +1,56 @@
+login("admin","123456")
+
+def getSchema(csv){
+ schema1=extractTextSchema(csv)
+ update schema1 set type = "SYMBOL" where name="stockcode"
+ update schema1 set type = "STRING" where name="TransactionTime"
+ update schema1 set type = "STRING" where name="HostTime"
+ //update schema1 set name=`Amount where name="TotalAmount" 
+ return schema1
+}
+/*
+def loadOneFile(csvFile,orderbooktb,schema1){
+ t = loadText(csvFile,,schema1)
+ t["market"] = left(t["Symbol"],2)
+ t["Symbol"] = substr(t["Symbol"],2)
+ t["Volume"] = eachPre(-, t["volume"], 0)
+ t["Amount"] = eachPre(-, t["Amount"], 0)
+ t.reorderColumns!(orderbooktb.schema().colDefs[`name])
+ return t
+}
+*/
+def createDB(dbName,tableName){ 
+ if(existsDatabase(dbName))
+  dropDatabase(dbName)
+ dbDate = database("", VALUE, 2022.01.01..2022.12.31)
+ dbSymbol=database("", HASH, [SYMBOL, 40])
+ db = database(dbName, COMPO, [dbDate, dbSymbol]) 
+ 
+             columns =`Date`stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime
+             type=[DATE,SYMBOL,INT,INT,INT,STRING,DOUBLE,INT,CHAR,INT,INT,STRING]
+ orderData = table(1:0, columns,type)
+ db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+}
+
+dbName = "dfs://history"
+tableName = "orderBook"
+createDB(dbName,tableName)
+
+csv="/mnt/ProductData/000001.csv"
+schema1=getSchema(csv)
+print(schema1)
+
+t = loadText(csv,,schema1)
+syms = (exec HostTime from t)
+print (syms)
+//print(t)
+tb = loadTable(dbName,tableName)
+print (typestr(tb))
+tb.append!(t)
+
+csv2="/mnt/ProductData/000002.csv"
+t = loadText(csv2,,schema1)
+tb = loadTable(dbName,tableName)
+tb.append!(t)
+
+select top  100 * from tb where date = 2022.01.05 //and HostTime between 93000000:93500000
