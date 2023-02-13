@@ -40,8 +40,13 @@ def readCSV(filepath, stock_date){
 
 dbName = "dfs://history"
 //tableName = "orderBook"
-tableName = "depthBook"
+tableName = "testtable"
 //tableName = "transBook"
+//createTB(dbName, tableName)
+filepath = "/mnt/ProductData/Level2CSV/order/20220104/000001.csv"
+//readCSV(filepath, 2022.01.04)
 tb = loadTable(dbName, tableName)
 
-select top 100* from tb 
+select sum(Volume) as sumVolume from tb group by stockcode,interval(TransactionTime, 3m, "none" )
+
+//select top 100* from tb 

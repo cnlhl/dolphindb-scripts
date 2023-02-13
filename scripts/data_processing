@@ -1,0 +1,20 @@
+def createTB(dbName,tableName){ 
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		return
+	columns =`Date`stockcode`TransactionTime_3mins`sumVolume
+	type=[DATE,SYMBOL,TIME,INT]
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+   }
+
+dbName = "dfs://history"
+read_tableName = "testtable"
+write_tableName = "groupby3mins"
+createTB(dbName, write_tableName)
+rtb = loadTable(dbName, read_tableName)
+wtb = loadTable(dbName, write_tableName)
+
+t = select sum(Volume) as sumVolume from rtb group by Date,stockcode, interval(TransactionTime, 3m, "none" ) as TransactionTime_3mins
+wtb.append!(t)
+select * from wtb

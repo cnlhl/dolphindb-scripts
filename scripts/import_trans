@@ -30,7 +30,7 @@ def getSchema(csv){
 def createTB_in_DB(dbName,tableName){  
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
-		dropTable(db,tableName)
+		return
 	columns =`Date`stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime
 	type=[DATE,SYMBOL,TIME,INT,INT,DOUBLE,INT,INT,CHAR,CHAR,INT,INT,INT,TIME]
 	orderData = table(1:0, columns,type)
@@ -62,8 +62,8 @@ def readDateFile(filepath,fname){
     date_file_path = filepath + fname + "/"
 	//print(date_file_path)
     filename2date = temporalParse(fname,"yyyyMMdd")
-    startdate = date(2022.01.01)
-    enddate = date(2022.01.31)
+    startdate = date(2022.09.01)
+    enddate = date(2022.12.01)
     if(filename2date>= startdate and filename2date<= enddate){
         print(fname)
         readAllCSV(date_file_path, filename2date)
