@@ -39,10 +39,9 @@ def readCSV(filepath, stock_date){
 }
 
 dbName = "dfs://history"
-tableName = "orderBook"
-//filepath = "/mnt/ProductData/Level2CSV/order/20220104/000001.csv"
-//createTB(dbName, tableName)
-//readCSV(filepath, date("2022.01.04"))
+//tableName = "orderBook"
+tableName = "depthBook"
+//tableName = "transBook"
 tb = loadTable(dbName, tableName)
 
-select top 100* from tb
+select top 100* from tb 

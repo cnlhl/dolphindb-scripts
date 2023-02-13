@@ -18,10 +18,10 @@ def getSchema(csv){
    }
 
 def string2time(mutable t){
-	TransactionTime =temporalParse(lpad((exec TransactionTime from t),9,"0"),"HHmmssSSS")
+	DepthMarketTime =temporalParse(lpad((exec DepthMarketTime from t),9,"0"),"HHmmssSSS")
 	HostTime =temporalParse(lpad((exec HostTime from t),9,"0"),"HHmmssSSS")
 	t.replaceColumn!(`HostTime,HostTime)
-	t.replaceColumn!(`TransactionTime,TransactionTime)
+	t.replaceColumn!(`DepthMarketTime,DepthMarketTime)
     return t
     }
 
