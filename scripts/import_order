@@ -28,7 +28,7 @@ def string2time(mutable t){
 def createTB(dbName,tableName){ 
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
-		dropTable(db,tableName)
+		return
 	columns =`Date`stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime
 	type=[DATE,SYMBOL,INT,INT,INT,TIME,DOUBLE,INT,CHAR,INT,INT,TIME]
 	orderData = table(1:0, columns,type)

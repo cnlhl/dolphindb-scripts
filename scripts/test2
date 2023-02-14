@@ -1,93 +1,31 @@
 login("admin","123456")
 
-def judge_empty(CSV_file_path){
-	s = file(CSV_file_path)
-   	len = s.seek(0,TAIL)
-   	if(len==1) 
-		return true
-	return false
-}
-
-def string2time(mutable t){
-	TransactionTime =temporalParse(lpad((exec TransactionTime from t),9,"0"),"HHmmssSSS")
-	HostTime =temporalParse(lpad((exec HostTime from t),9,"0"),"HHmmssSSS")
-	t.replaceColumn!(`HostTime,HostTime)
-	t.replaceColumn!(`TransactionTime,TransactionTime)
-    return t
-}
-
-def getSchema(csv){
-	schema1=extractTextSchema(csv)
-	update schema1 set type = "SYMBOL" where name="stockcode"
-	update schema1 set type = "STRING" where name="TransactionTime"
-	update schema1 set type = "STRING" where name="HostTime"
-	update schema1 set type = "INT" where name="Amount"
-	update schema1 set type = "CHAR" where name="CancelFlag"
-	//update schema1 set name=`Amount where name="TotalAmount" 
-	return schema1
-   }
-
-def createTB_in_DB(dbName,tableName){  
+def createTB(dbName,tableName){ 
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
-		dropTable(db,tableName)
-	columns =`Date`stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime
-	type=[DATE,SYMBOL,TIME,INT,INT,DOUBLE,INT,INT,CHAR,CHAR,INT,INT,INT,TIME]
+		return
+	columns =`Date`stockcode`TransactionTime_3mins`sumVolume
+	type=[DATE,SYMBOL,TIME,INT]
 	orderData = table(1:0, columns,type)
 	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
    }
 
-def readAllCSV(filepath, stock_date){
-	filelist = files(filepath)
-	for(f in filelist){
-		CSV_file_path = filepath + f[`filename]
-		//print(CSV_file_path)
-		//print(stock_date)
-		if(judge_empty(CSV_file_path))
-			continue
-		schema1=getSchema(CSV_file_path)
-		t = loadText(CSV_file_path,,schema1)
-		t = string2time(t)
-		targettable = loadTable("dfs://history","transBook")
-		addColumn(t,["Date", "stockcode"],[DATE,SYMBOL])
-		update t set stockcode = strReplace(f[`filename],".csv","");
-		update t set Date = stock_date
-		reorderColumns!(t,`Date`stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime)
-		//print(t)
-		targettable.append!(t)
-		}
-	}
-
-def readDateFile(filepath,fname){
-    date_file_path = filepath + fname + "/"
-	//print(date_file_path)
-    filename2date = temporalParse(fname,"yyyyMMdd")
-    startdate = date(2022.01.01)
-    enddate = date(2022.01.31)
-    if(filename2date>= startdate and filename2date<= enddate){
-        print(fname)
-        readAllCSV(date_file_path, filename2date)
-    }
-}
-
-def loop_readDateFile(filepath,filenames){
-    loop(readDateFile{filepath,},filenames)
-}
-
-def submit_readDateFile(filepath){
-	filelist = files(filepath)
-	parallalLevel = 10;
-	//to be finished
-	print(typestr(filelist))
-    print(size(filelist))
-    filenames = exec filename from filelist
-    for(f in filenames.cut(size(filelist)/parallalLevel))
-    	submitJob("loadTransData", "loadData",loop_readDateFile,filepath,f)
-}
-
-
 dbName = "dfs://history"
-tableName = "transBook"
-createTB_in_DB(dbName,tableName)
-filepath = "/mnt/ProductData/Level2CSV/trans/"
-submit_readDateFile(filepath);
+read_tableName = "testtable"
+write_tableName = "groupby3mins"
+createTB(dbName, write_tableName)
+rtb = loadTable(dbName, read_tableName)
+wtb = loadTable(dbName, write_tableName)
+
+Volume = exec Volume from rtb
+stockcode = exec stockcode from rtb
+Date = exec Date from rtb
+TransactionTime = exec TransactionTime from rtb
+
+t = table(Date, stockcode, Volume, TransactionTime)
+m = matrix(TABLE, t)
+//m.setIndexedMatrix!(')
+print(m)
+
+//t.resample("3min",sum)
+//select * from t

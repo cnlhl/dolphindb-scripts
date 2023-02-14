@@ -1,7 +1,27 @@
-def getSchema(csv){
+def get_order_Schema(csv){
 	schema1=extractTextSchema(csv)
 	update schema1 set type = "SYMBOL" where name="stockcode"
 	update schema1 set type = "STRING" where name="TransactionTime"
+	update schema1 set type = "STRING" where name="HostTime"
+	//update schema1 set name=`Amount where name="TotalAmount" 
+	return schema1
+   }
+
+def get_trans_Schema(csv){
+	schema1=extractTextSchema(csv)
+	update schema1 set type = "SYMBOL" where name="stockcode"
+	update schema1 set type = "STRING" where name="TransactionTime"
+	update schema1 set type = "STRING" where name="HostTime"
+	update schema1 set type = "INT" where name="Amount"
+	update schema1 set type = "CHAR" where name="CancelFlag"
+	//update schema1 set name=`Amount where name="TotalAmount" 
+	return schema1
+   }
+
+def get_depth_Schema(csv){
+	schema1=extractTextSchema(csv)
+	update schema1 set type = "SYMBOL" where name="stockcode"
+	update schema1 set type = "STRING" where name="DepthMarketTime"
 	update schema1 set type = "STRING" where name="HostTime"
 	//update schema1 set name=`Amount where name="TotalAmount" 
 	return schema1
@@ -13,40 +33,110 @@ def string2time(mutable t){
 	t.replaceColumn!(`HostTime,HostTime)
 	t.replaceColumn!(`TransactionTime,TransactionTime)
     return t
+}
+
+def depth_string2time(mutable t){
+	DepthMarketTime =temporalParse(lpad((exec DepthMarketTime from t),9,"0"),"HHmmssSSS")
+	HostTime =temporalParse(lpad((exec HostTime from t),9,"0"),"HHmmssSSS")
+	t.replaceColumn!(`HostTime,HostTime)
+	t.replaceColumn!(`DepthMarketTime,DepthMarketTime)
+    return t
     }
 
-def createTB(dbName,tableName){ 
-	db=database(directory=dbName);
-	if(existsTable(dbName,tableName))
-		dropTable(db,tableName)
-	columns =`Date`stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime
-	type=[DATE,SYMBOL,INT,INT,INT,TIME,DOUBLE,INT,CHAR,INT,INT,TIME]
-	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
-   }
 
-def readCSV(filepath, stock_date){
-    schema1=getSchema(filepath)
+def create_orderTB_in_DB(dbName,tableName){  
+		db=database(directory=dbName);
+		if(existsTable(dbName,tableName))
+			dropTable(db,tableName)
+		columns =`Date`stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime
+		type=[DATE,SYMBOL,INT,INT,INT,TIME,DOUBLE,INT,CHAR,INT,INT,TIME]
+		orderData = table(1:0, columns,type)
+		db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+	   }
+
+def create_depthTB_in_DB(dbName,tableName){  
+		db=database(directory=dbName);
+		if(existsTable(dbName,tableName))
+			dropTable(db,tableName)
+		columns =`Date`stockcode`DepthMarketTime`Status`PreClose`Open`High`Low`Close`AskPrice1`AskPrice2`AskPrice3`AskPrice4`AskPrice5`AskPrice6`AskPrice7`AskPrice8`AskPrice9`AskPrice10`AskVol1`AskVol2`AskVol3`AskVol4`AskVol5`AskVol6`AskVol7`AskVol8`AskVol9`AskVol10`BidPrice1`BidPrice2`BidPrice3`BidPrice4`BidPrice5`BidPrice6`BidPrice7`BidPrice8`BidPrice9`BidPrice10`BidVol1`BidVol2`BidVol3`BidVol4`BidVol5`BidVol6`BidVol7`BidVol8`BidVol9`BidVol10`Trades`Volume`Turnover`TotalBidVol`TotalAskVol`WeightedAvgBidPrice`WeightedAvgAskPrice`HighLimit`LowLimit`HostTime
+		type=[DATE,SYMBOL,TIME,INT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,DOUBLE,INT,INT,FLOAT,FLOAT,FLOAT,FLOAT,TIME]
+	
+		orderData = table(1:0, columns,type)
+		db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+	   }
+
+def create_transTB_in_DB(dbName,tableName){  
+		db=database(directory=dbName);
+		if(existsTable(dbName,tableName))
+			dropTable(db,tableName)
+		columns =`Date`stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime
+		type=[DATE,SYMBOL,TIME,INT,INT,DOUBLE,INT,INT,CHAR,CHAR,INT,INT,INT,TIME]
+		orderData = table(1:0, columns,type)
+		db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+	   }
+
+def read_orderCSV(filepath, stock_date){
+    schema1=get_order_Schema(filepath)
     t = loadText(filepath,,schema1)
     t = string2time(t)
-    targettable = loadTable("dfs://history","testtable")
+    targettable = loadTable("dfs://history","test_order_Book")
     addColumn(t,["Date", "stockcode"],[DATE,SYMBOL])
     update t set stockcode = "000001"
     update t set Date = stock_date
-    reorderColumns!(t,`Date`stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime)
+	reorderColumns!(t,`Date`stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime)
+    //print(t)
+    targettable.append!(t)
+}
+
+def read_transCSV(filepath, stock_date){
+    schema1=get_trans_Schema(filepath)
+    t = loadText(filepath,,schema1)
+    t = string2time(t)
+    targettable = loadTable("dfs://history","test_trans_Book")
+    addColumn(t,["Date", "stockcode"],[DATE,SYMBOL])
+    update t set stockcode = "000001"
+    update t set Date = stock_date
+	reorderColumns!(t,`Date`stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime)
+    //print(t)
+    targettable.append!(t)
+}
+
+def read_depthCSV(filepath, stock_date){
+    schema1=get_depth_Schema(filepath)
+    t = loadText(filepath,,schema1)
+    t = depth_string2time(t)
+    targettable = loadTable("dfs://history","test_depth_Book")
+    addColumn(t,["Date", "stockcode"],[DATE,SYMBOL])
+    update t set stockcode = "000001"
+    update t set Date = stock_date
+	reorderColumns!(t,`Date`stockcode`DepthMarketTime`Status`PreClose`Open`High`Low`Close`AskPrice1`AskPrice2`AskPrice3`AskPrice4`AskPrice5`AskPrice6`AskPrice7`AskPrice8`AskPrice9`AskPrice10`AskVol1`AskVol2`AskVol3`AskVol4`AskVol5`AskVol6`AskVol7`AskVol8`AskVol9`AskVol10`BidPrice1`BidPrice2`BidPrice3`BidPrice4`BidPrice5`BidPrice6`BidPrice7`BidPrice8`BidPrice9`BidPrice10`BidVol1`BidVol2`BidVol3`BidVol4`BidVol5`BidVol6`BidVol7`BidVol8`BidVol9`BidVol10`Trades`Volume`Turnover`TotalBidVol`TotalAskVol`WeightedAvgBidPrice`WeightedAvgAskPrice`HighLimit`LowLimit`HostTime)
     //print(t)
     targettable.append!(t)
 }
 
 dbName = "dfs://history"
-//tableName = "orderBook"
-tableName = "testtable"
-//tableName = "transBook"
-//createTB(dbName, tableName)
-filepath = "/mnt/ProductData/Level2CSV/order/20220104/000001.csv"
-//readCSV(filepath, 2022.01.04)
-tb = loadTable(dbName, tableName)
+trans_tableName = "test_trans_Book"
+order_tableName = "test_order_Book"
+depth_tableName = "test_depth_Book"
 
-select sum(Volume) as sumVolume from tb group by stockcode,interval(TransactionTime, 3m, "none" )
+create_orderTB_in_DB(dbName, order_tableName)
+create_transTB_in_DB(dbName, trans_tableName)
+create_depthTB_in_DB(dbName, depth_tableName)
 
-//select top 100* from tb 
+order_filepath = "/mnt/ProductData/Level2CSV/order/20220104/000001.csv"
+trans_filepath = "/mnt/ProductData/Level2CSV/trans/20220104/000001.csv"
+depth_filepath = "/mnt/ProductData/Level2CSV/depth/20220104/000001.csv"
+
+read_depthCSV(depth_filepath, 2022.01.04)
+read_orderCSV(order_filepath, 2022.01.04)
+read_transCSV(trans_filepath, 2022.01.04)
+
+tb1 = loadTable(dbName,order_tableName)
+tb2 = loadTable(dbName,trans_tableName)
+tb3 = loadTable(dbName,depth_tableName)
+
+tb_B_cancel = select Date,stockcode,BidOrderSeqNo,(second(TransactionTime)/3+1)*3 as TransTime from tb2 where CancelFlag = "C" and BSFlag = "B"
+tb_S_cancel = select Date,stockcode,AskOrderSeqNo,(second(TransactionTime)/3+1)*3 as TransTime from tb2 where CancelFlag = "C" and BSFlag = "S"
+
+//tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransactionTime,Price from tb_B_cancel left join tb1 on tb_B_cancel.BidOrderSeqNo = tb1.SeqNo and tb_B_cancel.stockcode = tb1.stockcode and tb_B_cancel.Date = tb1.Date
+//tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransactionTime,Price from tb_S_cancel left join tb1 on tb_S_cancel.BidOrderSeqNo = tb1.SeqNo and tb_S_cancel.stockcode = tb1.stockcode and tb_S_cancel.Date = tb1.Date

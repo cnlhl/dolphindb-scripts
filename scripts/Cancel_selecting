@@ -1,0 +1,21 @@
+dbName = "dfs://history"
+trans_tableName = "test_trans_Book"
+order_tableName = "test_order_Book"
+depth_tableName = "test_depth_Book"
+
+tb1 = loadTable(dbName,order_tableName)
+tb2 = loadTable(dbName,trans_tableName)
+tb3 = loadTable(dbName,depth_tableName)
+
+//tb_B_cancel = select Date,stockcode,BidOrderSeqNo,second(TransactionTime)+(3-second(TransactionTime)%3) as TransTime from tb2 where CancelFlag = "C" and BSFlag = "B"
+tb_S_cancel = select Date,stockcode,AskOrderSeqNo,time(second(TransactionTime)+(3-second(TransactionTime)%3)) as TransTime from tb2 where CancelFlag = "C" and BSFlag = "S"
+
+
+//tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransactionTime,Price from tb_B_cancel left join tb1 on tb_B_cancel.BidOrderSeqNo = tb1.SeqNo and tb_B_cancel.stockcode = tb1.stockcode and tb_B_cancel.Date = tb1.Date
+
+tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransTime,Price from tb_S_cancel left join tb1 on tb_S_cancel.AskOrderSeqNo = tb1.SeqNo and tb_S_cancel.stockcode = tb1.stockcode and tb_S_cancel.Date = tb1.Date
+
+tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransTime,Price,AskPrice1 from tb_S_cancel left join tb3 on tb_S_cancel.TransTime = tb3.DepthMarketTime
+select * from tb_S_cancel
+
+
