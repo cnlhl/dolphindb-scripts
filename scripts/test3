@@ -1,4 +1,6 @@
-tt = 14:59:47
-print(tt +(3-(tt)%3))
-//print(t1)
-//print(t1)
+dbName = "dfs://level2"
+if(existsDatabase(dbName))
+    dropDatabase(dbName)
+dbDate = database("", VALUE, 2022.01.01..2022.12.31)
+dbSymbol=database("", HASH, [INT, 40])
+db = database(dbName, COMPO, [dbDate, dbSymbol]) 
