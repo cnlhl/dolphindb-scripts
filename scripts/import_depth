@@ -61,7 +61,7 @@ def readAllCSV(filepath, stock_date){
 		//print(date_file_path)
 		filename2date = temporalParse(fname,"yyyyMMdd")
 		startdate = date(2022.09.01)
-		enddate = date(2022.12.01)
+		enddate = date(2022.10.01)
 		if(filename2date>= startdate and filename2date<= enddate){
 			print(fname)
 			readAllCSV(date_file_path, filename2date)
@@ -88,5 +88,5 @@ dbName = "dfs://history"
 tableName = "depthBook"
 createTB_in_DB(dbName,tableName)
 tb = loadTable(dbName,tableName)
-filepath = "/mnt/ProductData/Level2CSV/depth/"
+filepath = "/mnt/SandboxData/Level2CSV/depth/"
 submit_readDateFile(filepath);

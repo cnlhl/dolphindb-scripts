@@ -3,7 +3,7 @@ def create_bid_TB_in_DB(dbName,tableName){
 	if(existsTable(dbName,tableName))
 		dropTable(db,tableName)
 	columns =`Date`stockcode`BidOrderSeqNo`TransTime`Price`BidPrice1
-	type=[DATE,INT,INT,TIME,DOUBLE,FLOAT]
+	type=[DATE,SYMBOL,INT,TIME,DOUBLE,FLOAT]
 	orderData = table(1:0, columns,type)
 	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
    }
@@ -13,15 +13,15 @@ def create_ask_TB_in_DB(dbName,tableName){
 	if(existsTable(dbName,tableName))
 		dropTable(db,tableName)
 	columns =`Date`stockcode`AskOrderSeqNo`TransTime`Price`AskPrice1
-	type=[DATE,INT,INT,TIME,DOUBLE,FLOAT]
+	type=[DATE,SYMBOL,INT,TIME,DOUBLE,FLOAT]
 	orderData = table(1:0, columns,type)
 	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
    }
 
-dbName = "dfs://level2"
-trans_tableName = "test_trans_Book"
-order_tableName = "test_order_Book"
-depth_tableName = "test_depth_Book"
+dbName = "dfs://history"
+trans_tableName = "transBook"
+order_tableName = "orderBook"
+depth_tableName = "depthBook"
 load_tableName_B = "Bcanceled"
 load_tableName_S = "Scanceled"
 
@@ -35,20 +35,23 @@ tb1 = loadTable(dbName,order_tableName)
 tb2 = loadTable(dbName,trans_tableName)
 tb3 = loadTable(dbName,depth_tableName)
 
+target_stock = "000001"
 
-for (d in 2022.01.01..2022.12.31){
+for (d in 2022.09.01..2022.09.02){
     //empty_judgy
     if(size(select * from tb2 where Date = d limit 1)==0)
         continue
     //select canceled order
-	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,time(second(TransactionTime)+(3-second(TransactionTime)%3)) as TransTime from tb2 where CancelFlag = "C" and BSFlag = "B" and Date = d
-	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,time(second(TransactionTime)+(3-second(TransactionTime)%3)) as TransTime from tb2 where CancelFlag = "C" and BSFlag = "S" and Date = d
+	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,time(second(TransactionTime)+(3-second(TransactionTime)%3)) as TransTime from tb2 where CancelFlag = "C" and BSFlag = "B" and Date = d and stockcode = target_stock
+	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,time(second(TransactionTime)+(3-second(TransactionTime)%3)) as TransTime from tb2 where CancelFlag = "C" and BSFlag = "S" and Date = d and stockcode = target_stock
     //get order price
-	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransTime,Price from tb_B_cancel left join tb1 on tb_B_cancel.BidOrderSeqNo = tb1.SeqNo and tb_B_cancel.stockcode = tb1.stockcode and tb_B_cancel.Date = tb1.Date
-	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransTime,Price from tb_S_cancel left join tb1 on tb_S_cancel.AskOrderSeqNo = tb1.SeqNo and tb_S_cancel.stockcode = tb1.stockcode and tb_S_cancel.Date = tb1.Date
+	tb_order = select * from tb1 where Date = d and stockcode = target_stock
+	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransTime,Price from tb_B_cancel left join tb_order on tb_B_cancel.BidOrderSeqNo = tb_order.SeqNo 
+	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransTime,Price from tb_S_cancel left join tb_order on tb_S_cancel.AskOrderSeqNo = tb_order.SeqNo 
     //get No.1 bider/asker
-	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransTime,Price,BidPrice1 from tb_B_cancel left join tb3 on tb_B_cancel.TransTime = tb3.DepthMarketTime
-	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransTime,Price,AskPrice1 from tb_S_cancel left join tb3 on tb_S_cancel.TransTime = tb3.DepthMarketTime
+	tb_depth = select * from tb3 where Date = d and stockcode = target_stock
+	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransTime,Price,BidPrice1 from tb_B_cancel left join tb_depth on tb_B_cancel.TransTime = tb_depth.DepthMarketTime
+	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransTime,Price,AskPrice1 from tb_S_cancel left join tb_depth on tb_S_cancel.TransTime = tb_depth.DepthMarketTime
     //clear void price and select the bid1/ask1 order canceled
 	null_reduced_B = select * from  tb_B_cancel where Price != NULL and Price = BidPrice1 
     null_reduced_S = select * from  tb_S_cancel where Price != NULL and Price = AskPrice1 
@@ -57,4 +60,4 @@ for (d in 2022.01.01..2022.12.31){
 	tbS.append!(null_reduced_S)
 }
 
-select * from tbB
+select top 100* from tbB

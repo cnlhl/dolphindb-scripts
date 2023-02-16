@@ -1,6 +1,66 @@
-dbName = "dfs://level2"
-if(existsDatabase(dbName))
-    dropDatabase(dbName)
-dbDate = database("", VALUE, 2022.01.01..2022.12.31)
-dbSymbol=database("", HASH, [INT, 40])
-db = database(dbName, COMPO, [dbDate, dbSymbol]) 
+def create_bid_TB_in_DB(dbName,tableName){  
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+	columns =`Date`stockcode`BidOrderSeqNo`TransTime`Price`BidPrice1
+	type=[DATE,SYMBOL,INT,TIME,DOUBLE,FLOAT]
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+   }
+
+def create_ask_TB_in_DB(dbName,tableName){  
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+	columns =`Date`stockcode`AskOrderSeqNo`TransTime`Price`AskPrice1
+	type=[DATE,SYMBOL,INT,TIME,DOUBLE,FLOAT]
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+   }
+
+dbName = "dfs://history"
+trans_tableName = "transBook"
+order_tableName = "orderBook"
+depth_tableName = "depthBook"
+load_tableName_B = "Bcanceled"
+load_tableName_S = "Scanceled"
+
+create_bid_TB_in_DB(dbName,load_tableName_B)
+create_ask_TB_in_DB(dbName,load_tableName_S)
+
+tbB = loadTable(dbName,load_tableName_B)
+tbS = loadTable(dbName,load_tableName_S)
+
+tb1 = loadTable(dbName,order_tableName)
+tb2 = loadTable(dbName,trans_tableName)
+tb3 = loadTable(dbName,depth_tableName)
+
+d = 2022.09.01
+s = "000001"
+//empty_judgy
+
+//select canceled order
+tb_B_cancel = select Date,stockcode,BidOrderSeqNo,time(second(TransactionTime)+(3-second(TransactionTime)%3)) as TransTime from tb2 where CancelFlag = "C" and BSFlag = "B" and Date = d and stockcode = s
+//tb_S_cancel = select Date,stockcode,AskOrderSeqNo,time(second(TransactionTime)+(3-second(TransactionTime)%3)) as TransTime from tb2 where CancelFlag = "C" and BSFlag = "S" and Date = d and stockcode = s
+//get order price
+//tb_B_order = select * from tb1 where Date = d and stockcode = s
+
+//tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransTime,Price from tb_B_cancel left join tb_B_order on tb_B_cancel.BidOrderSeqNo = tb_B_order.SeqNo and tb_B_cancel.Date = tb_B_order.Date 
+
+tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransTime,Price from tb_B_cancel left join tb1 on tb_B_cancel.BidOrderSeqNo = tb1.SeqNo and tb_B_cancel.stockcode = tb1.stockcode and tb_B_cancel.Date = tb1.Date
+//tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransTime,Price from tb_S_cancel left join tb1 on tb_S_cancel.AskOrderSeqNo = tb1.SeqNo and tb_S_cancel.stockcode = tb1.stockcode and tb_S_cancel.Date = tb1.Date
+//get No.1 bider/asker
+
+
+tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransTime,Price,BidPrice1 from tb_B_cancel left join tb3 on tb_B_cancel.TransTime = tb3.DepthMarketTime and tb_B_cancel.Date = tb3.Date and tb_B_cancel.stockcode = tb3.stockcode
+//tb_B_depth = select * from tb3 where date = d and stockcode = s
+//tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransTime,Price,BidPrice1 from tb_B_cancel left join tb_B_depth on tb_B_cancel.TransTime = tb_B_depth.DepthMarketTime
+//tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransTime,Price,AskPrice1 from tb_S_cancel left join tb3 on tb_S_cancel.TransTime = tb3.DepthMarketTime
+//clear void price and select the bid1/ask1 order canceled
+null_reduced_B = select * from  tb_B_cancel where Price != NULL and Price = BidPrice1 
+//null_reduced_S = select * from  tb_S_cancel where Price != NULL and Price = AskPrice1 
+//load result into table
+tbB.append!(null_reduced_B)
+//tbS.append!(null_reduced_S)
+
+select top 100* from tbB
