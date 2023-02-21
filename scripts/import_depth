@@ -60,8 +60,8 @@ def readAllCSV(filepath, stock_date){
 		date_file_path = filepath + fname + "/"
 		//print(date_file_path)
 		filename2date = temporalParse(fname,"yyyyMMdd")
-		startdate = date(2022.09.01)
-		enddate = date(2022.10.01)
+		startdate = date(2022.10.14)
+		enddate = date(2022.12.01)
 		if(filename2date>= startdate and filename2date<= enddate){
 			print(fname)
 			readAllCSV(date_file_path, filename2date)

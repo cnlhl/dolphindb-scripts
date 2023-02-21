@@ -31,7 +31,8 @@ def createTB_in_DB(dbName,tableName){
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
 		return
-	columns =`Date`stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime
+	columns =`Date`stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo
+			`BizIndex`HostTime
 	type=[DATE,SYMBOL,TIME,INT,INT,DOUBLE,INT,INT,CHAR,CHAR,INT,INT,INT,TIME]
 	orderData = table(1:0, columns,type)
 	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
