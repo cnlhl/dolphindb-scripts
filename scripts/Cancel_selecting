@@ -2,20 +2,20 @@ def create_bid_TB_in_DB(dbName,tableName){
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
 		dropTable(db,tableName)
-	columns =`Date`stockcode`BidOrderSeqNo`TransTime`Price`BidPrice1
-	type=[DATE,SYMBOL,INT,TIME,DOUBLE,FLOAT]
+	columns =`Date`stockcode`BidOrderSeqNo`OrderType`TransactionTime`DepthMarketTime`Price`BidPrice1
+	type=[DATE,SYMBOL,INT,INT,TIME,TIME,DOUBLE,FLOAT]
 	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
    }
 
 def create_ask_TB_in_DB(dbName,tableName){  
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
 		dropTable(db,tableName)
-	columns =`Date`stockcode`AskOrderSeqNo`TransTime`Price`AskPrice1
-	type=[DATE,SYMBOL,INT,TIME,DOUBLE,FLOAT]
+	columns =`Date`stockcode`AskOrderSeqNo`OrderType`TransactionTime`DepthMarketTime`Price`AskPrice1
+	type=[DATE,SYMBOL,INT,INT,TIME,TIME,DOUBLE,FLOAT]
 	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
    }
 
 dbName = "dfs://history"
@@ -37,27 +37,27 @@ tb3 = loadTable(dbName,depth_tableName)
 
 target_stock = "000001"
 
-for (d in 2022.09.01..2022.09.02){
+for (d in 2022.10.14..2022.10.15){
     //empty_judgy
     if(size(select * from tb2 where Date = d limit 1)==0)
         continue
-    //select canceled order
-	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,time(second(TransactionTime)+(3-second(TransactionTime)%3)) as TransTime from tb2 where CancelFlag = "C" and BSFlag = "B" and Date = d and stockcode = target_stock
-	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,time(second(TransactionTime)+(3-second(TransactionTime)%3)) as TransTime from tb2 where CancelFlag = "C" and BSFlag = "S" and Date = d and stockcode = target_stock
+       //select canceled order
+	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransactionTime,time(second(TransactionTime)-second(TransactionTime)%3) as DepthMarketTime from tb2 where CancelFlag = "C" and BSFlag = "B" and Date = d and stockcode = target_stock	
+	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransactionTime,time(second(TransactionTime)-second(TransactionTime)%3) as DepthMarketTime from tb2 where CancelFlag = "C" and BSFlag = "S" and Date = d and stockcode = target_stock
     //get order price
 	tb_order = select * from tb1 where Date = d and stockcode = target_stock
-	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransTime,Price from tb_B_cancel left join tb_order on tb_B_cancel.BidOrderSeqNo = tb_order.SeqNo 
-	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransTime,Price from tb_S_cancel left join tb_order on tb_S_cancel.AskOrderSeqNo = tb_order.SeqNo 
-    //get No.1 bider/asker
+	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,OrderType,TransactionTime,DepthMarketTime,Price from tb_B_cancel left join tb_order on tb_B_cancel.BidOrderSeqNo = tb_order.SeqNo 
+	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,OrderType,TransactionTime,DepthMarketTime,Price from tb_S_cancel left join tb_order on tb_S_cancel.AskOrderSeqNo = tb_order.SeqNo 
+	//get No.1 bider/asker
 	tb_depth = select * from tb3 where Date = d and stockcode = target_stock
-	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransTime,Price,BidPrice1 from tb_B_cancel left join tb_depth on tb_B_cancel.TransTime = tb_depth.DepthMarketTime
-	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransTime,Price,AskPrice1 from tb_S_cancel left join tb_depth on tb_S_cancel.TransTime = tb_depth.DepthMarketTime
+	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,OrderType,TransactionTime,DepthMarketTime,Price,BidPrice1 from tb_B_cancel left semijoin tb_depth on tb_B_cancel.DepthMarketTime = tb_depth.DepthMarketTime //where tb_depth.DepthMarketTime = (select max(DepthMarketTime) from tb_depth)
+	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,OrderType,TransactionTime,DepthMarketTime,Price,AskPrice1 from tb_S_cancel left semijoin tb_depth on tb_S_cancel.DepthMarketTime = tb_depth.DepthMarketTime
     //clear void price and select the bid1/ask1 order canceled
-	null_reduced_B = select * from  tb_B_cancel where Price != NULL and Price = BidPrice1 
-    null_reduced_S = select * from  tb_S_cancel where Price != NULL and Price = AskPrice1 
+ 	equal_B = select * from tb_B_cancel where BidPrice1 != NULL and OrderType = 0 and Price >= BidPrice1 and TransactionTime >= 09:30:00.000
+    equal_S = select * from tb_S_cancel where AskPrice1 != NULL and OrderType = 0 and Price >= AskPrice1 and TransactionTime >= 09:30:00.000
 	//load result into table
-	tbB.append!(null_reduced_B)
-	tbS.append!(null_reduced_S)
+	tbB.append!(equal_B)
+	tbS.append!(equal_S)
 }
 
-select top 100* from tbB
+select * from tbB

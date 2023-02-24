@@ -1,0 +1,8 @@
+login("admin","123456")
+
+dbName = "dfs://history"
+dbDate = database("", VALUE, 2022.01.01..2022.12.31)
+dbSymbol=database("", HASH, [SYMBOL, 40])
+if(existsDatabase(dbName))
+	dropDatabase(dbName)
+create database "dfs://history" partitioned by VALUE(2022.01.01..2022.12.31),HASH([SYMBOL,40]), engine='TSDB'

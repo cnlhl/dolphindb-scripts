@@ -33,7 +33,7 @@ def createTB_in_DB(dbName,tableName){
 	type=[DATE,SYMBOL,TIME,INT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,FLOAT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,DOUBLE,INT,INT,FLOAT,FLOAT,FLOAT,FLOAT,TIME]
 
 	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(orderData, tableName,`Date`stockcode)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
    }
 
 def readAllCSV(filepath, stock_date){
@@ -60,8 +60,8 @@ def readAllCSV(filepath, stock_date){
 		date_file_path = filepath + fname + "/"
 		//print(date_file_path)
 		filename2date = temporalParse(fname,"yyyyMMdd")
-		startdate = date(2022.10.14)
-		enddate = date(2022.12.01)
+		startdate = date(2022.09.01)
+		enddate = date(2022.10.14)
 		if(filename2date>= startdate and filename2date<= enddate){
 			print(fname)
 			readAllCSV(date_file_path, filename2date)
