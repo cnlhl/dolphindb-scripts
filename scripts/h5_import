@@ -1,5 +1,7 @@
 //loadPlugin("plugins/hdf5/PluginHdf5.txt")
 filepath="/mnt/PublicData/Level2withSHOrder/20220214/transaction.h5"
-datasetname = "/FeaturesDB/000059/7"
-tmpTB = hdf5::loadHDF5(filepath,datasetname)
-select * from tmpTB
+hdf5::ls(filepath)
+
+//datasetname = "/FeaturesDB/000059/7"
+//tmpTB = hdf5::loadHDF5(filepath,datasetname)
+//select * from tmpTB

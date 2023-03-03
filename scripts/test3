@@ -5,7 +5,7 @@ def create_bid_TB_in_DB(dbName,tableName){
 	columns =`Date`stockcode`BidOrderSeqNo`OrderType`TransactionTime`DepthMarketTime`Price`BidPrice1`Volume
 	type=[DATE,SYMBOL,INT,INT,TIME,TIME,DOUBLE,FLOAT,INT]
 	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`stockcode`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
    }
 
 def create_ask_TB_in_DB(dbName,tableName){  
@@ -23,44 +23,15 @@ trans_tableName = "transBook"
 order_tableName = "orderBook"
 depth_tableName = "depthBook"
 load_tableName_B = "Bcanceled"
-load_tableName_S = "Scanceled"
+//load_tableName_S = "Scanceled"
 
 create_bid_TB_in_DB(dbName,load_tableName_B)
-create_ask_TB_in_DB(dbName,load_tableName_S)
+//create_ask_TB_in_DB(dbName,load_tableName_S)
 
 tbB = loadTable(dbName,load_tableName_B)
-tbS = loadTable(dbName,load_tableName_S)
+//tbS = loadTable(dbName,load_tableName_S)
 
 tb1 = loadTable(dbName,order_tableName)
 tb2 = loadTable(dbName,trans_tableName)
 tb3 = loadTable(dbName,depth_tableName)
 
-target_stock = "000001"
-
-d = 2022.10.14
-    //empty_judgy
-    if(size(select * from tb2 where Date = d limit 1)==0)
-        continue
-       //select canceled order
-	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransactionTime,time(second(TransactionTime)-second(TransactionTime)%3) as DepthMarketTime,Volume	from tb2 where CancelFlag = "C" and BSFlag = "B" and Date = d and stockcode = target_stock	
-	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransactionTime,time(second(TransactionTime)-second(TransactionTime)%3) as DepthMarketTime,Volume	from tb2 where CancelFlag = "C" and BSFlag = "S" and Date = d and stockcode = target_stock
-    select sum(Volume) from tb_S_cancel
-	/*
-	//get order price
-	tb_order = select * from tb1 where Date = d and stockcode = target_stock
-	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,OrderType,TransactionTime,DepthMarketTime,Price,Volume from tb_B_cancel left join tb_order on tb_B_cancel.BidOrderSeqNo = tb_order.SeqNo 
-	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,OrderType,TransactionTime,DepthMarketTime,Price,Volume from tb_S_cancel left join tb_order on tb_S_cancel.AskOrderSeqNo = tb_order.SeqNo 
-	//get No.1 bider/asker
-	tb_depth = select * from tb3 where Date = d and stockcode = target_stock
-	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,OrderType,TransactionTime,DepthMarketTime,Price,BidPrice1,Volume from tb_B_cancel left semijoin tb_depth on tb_B_cancel.DepthMarketTime = tb_depth.DepthMarketTime //where tb_depth.DepthMarketTime = (select max(DepthMarketTime) from tb_depth)
-	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,OrderType,TransactionTime,DepthMarketTime,Price,AskPrice1,Volume from tb_S_cancel left semijoin tb_depth on tb_S_cancel.DepthMarketTime = tb_depth.DepthMarketTime
-    //clear void price and select the bid1/ask1 order canceled
- 	equal_B = select * from tb_B_cancel where BidPrice1 != NULL and OrderType = 0 and Price >= BidPrice1 and TransactionTime >= 09:30:00.000
-    equal_S = select * from tb_S_cancel where AskPrice1 != NULL and OrderType = 0 and Price <= AskPrice1 and TransactionTime >= 09:30:00.000
-	//load result into table
-	tbB.append!(equal_B)
-	tbS.append!(equal_S)
-
-//select * from tbB
-select sum(Volume) from tbB
-//print(sum_bid1_canceled_volume)

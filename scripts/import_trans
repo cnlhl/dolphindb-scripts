@@ -18,7 +18,7 @@ def string2time(mutable t){
 
 def getSchema(csv){
 	schema1=extractTextSchema(csv)
-	update schema1 set type = "SYMBOL" where name="stockcode"
+	update schema1 set type = "SYMBOL" where name="Stockcode"
 	update schema1 set type = "STRING" where name="TransactionTime"
 	update schema1 set type = "STRING" where name="HostTime"
 	update schema1 set type = "INT" where name="Amount"
@@ -32,10 +32,10 @@ def createTB_in_DB(dbName,tableName){
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
 		return
-	columns =`Date`stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime
+	columns =`Date`Stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime
 	type=[DATE,SYMBOL,TIME,INT,INT,DOUBLE,INT,INT,SYMBOL,SYMBOL,INT,INT,INT,TIME]
 	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`Stockcode, sortColumns=`Stockcode`Date, keepDuplicates=ALL)
    }
 
 def readAllCSV(filepath, stock_date){
@@ -50,10 +50,10 @@ def readAllCSV(filepath, stock_date){
 		t = loadText(CSV_file_path,,schema1)
 		t = string2time(t)
 		targettable = loadTable("dfs://history","transBook")
-		addColumn(t,["Date", "stockcode"],[DATE,SYMBOL])
-		update t set stockcode = strReplace(f[`filename],".csv","");
+		addColumn(t,["Date", "Stockcode"],[DATE,SYMBOL])
+		update t set Stockcode = strReplace(f[`filename],".csv","");
 		update t set Date = stock_date
-		reorderColumns!(t,`Date`stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime)
+		reorderColumns!(t,`Date`Stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime)
 		//print(t)
 		targettable.append!(t)
 		}

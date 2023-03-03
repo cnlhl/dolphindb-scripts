@@ -10,7 +10,7 @@ def judge_empty(CSV_file_path){
 
 def getSchema(csv){
 	schema1=extractTextSchema(csv)
-	update schema1 set type = "SYMBOL" where name="stockcode"
+	update schema1 set type = "SYMBOL" where name="Stockcode"
 	update schema1 set type = "STRING" where name="DepthMarketTime"
 	update schema1 set type = "STRING" where name="HostTime"
 	//update schema1 set name=`Amount where name="TotalAmount" 
@@ -29,11 +29,11 @@ def createTB_in_DB(dbName,tableName){
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
 		dropTable(db,tableName)
-	columns =`Date`stockcode`DepthMarketTime`Status`PreClose`Open`High`Low`Close`AskPrice1`AskPrice2`AskPrice3`AskPrice4`AskPrice5`AskPrice6`AskPrice7`AskPrice8`AskPrice9`AskPrice10`AskVol1`AskVol2`AskVol3`AskVol4`AskVol5`AskVol6`AskVol7`AskVol8`AskVol9`AskVol10`BidPrice1`BidPrice2`BidPrice3`BidPrice4`BidPrice5`BidPrice6`BidPrice7`BidPrice8`BidPrice9`BidPrice10`BidVol1`BidVol2`BidVol3`BidVol4`BidVol5`BidVol6`BidVol7`BidVol8`BidVol9`BidVol10`Trades`Volume`Turnover`TotalBidVol`TotalAskVol`WeightedAvgBidPrice`WeightedAvgAskPrice`HighLimit`LowLimit`HostTime
+	columns =`Date`Stockcode`DepthMarketTime`Status`PreClose`Open`High`Low`Close`AskPrice1`AskPrice2`AskPrice3`AskPrice4`AskPrice5`AskPrice6`AskPrice7`AskPrice8`AskPrice9`AskPrice10`AskVol1`AskVol2`AskVol3`AskVol4`AskVol5`AskVol6`AskVol7`AskVol8`AskVol9`AskVol10`BidPrice1`BidPrice2`BidPrice3`BidPrice4`BidPrice5`BidPrice6`BidPrice7`BidPrice8`BidPrice9`BidPrice10`BidVol1`BidVol2`BidVol3`BidVol4`BidVol5`BidVol6`BidVol7`BidVol8`BidVol9`BidVol10`Trades`Volume`Turnover`TotalBidVol`TotalAskVol`WeightedAvgBidPrice`WeightedAvgAskPrice`HighLimit`LowLimit`HostTime
 	type=[DATE,SYMBOL,TIME,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,DOUBLE,INT,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIME]
 
 	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`Stockcode, sortColumns=`Stockcode`Date, keepDuplicates=ALL)
    }
 
 def readAllCSV(filepath, stock_date){
@@ -48,10 +48,10 @@ def readAllCSV(filepath, stock_date){
 		t = loadText(CSV_file_path,,schema1)
 		t = string2time(t)
 		targettable = loadTable("dfs://history","depthBook")
-		addColumn(t,["Date", "stockcode"],[DATE,SYMBOL])
-		update t set stockcode = strReplace(f[`filename],".csv","");
+		addColumn(t,["Date", "Stockcode"],[DATE,SYMBOL])
+		update t set Stockcode = strReplace(f[`filename],".csv","");
 		update t set Date = stock_date
-		reorderColumns!(t,`Date`stockcode`DepthMarketTime`Status`PreClose`Open`High`Low`Close`AskPrice1`AskPrice2`AskPrice3`AskPrice4`AskPrice5`AskPrice6`AskPrice7`AskPrice8`AskPrice9`AskPrice10`AskVol1`AskVol2`AskVol3`AskVol4`AskVol5`AskVol6`AskVol7`AskVol8`AskVol9`AskVol10`BidPrice1`BidPrice2`BidPrice3`BidPrice4`BidPrice5`BidPrice6`BidPrice7`BidPrice8`BidPrice9`BidPrice10`BidVol1`BidVol2`BidVol3`BidVol4`BidVol5`BidVol6`BidVol7`BidVol8`BidVol9`BidVol10`Trades`Volume`Turnover`TotalBidVol`TotalAskVol`WeightedAvgBidPrice`WeightedAvgAskPrice`HighLimit`LowLimit`HostTime)
+		reorderColumns!(t,`Date`Stockcode`DepthMarketTime`Status`PreClose`Open`High`Low`Close`AskPrice1`AskPrice2`AskPrice3`AskPrice4`AskPrice5`AskPrice6`AskPrice7`AskPrice8`AskPrice9`AskPrice10`AskVol1`AskVol2`AskVol3`AskVol4`AskVol5`AskVol6`AskVol7`AskVol8`AskVol9`AskVol10`BidPrice1`BidPrice2`BidPrice3`BidPrice4`BidPrice5`BidPrice6`BidPrice7`BidPrice8`BidPrice9`BidPrice10`BidVol1`BidVol2`BidVol3`BidVol4`BidVol5`BidVol6`BidVol7`BidVol8`BidVol9`BidVol10`Trades`Volume`Turnover`TotalBidVol`TotalAskVol`WeightedAvgBidPrice`WeightedAvgAskPrice`HighLimit`LowLimit`HostTime)
 		//print(t)
 		targettable.append!(t)
 		}

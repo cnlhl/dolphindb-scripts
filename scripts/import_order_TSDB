@@ -9,7 +9,7 @@ def judge_empty(CSV_file_path){
 
 def getSchema(csv){
 	schema1=extractTextSchema(csv)
-	update schema1 set type = "SYMBOL" where name="stockcode"
+	update schema1 set type = "SYMBOL" where name="Stockcode"
 	update schema1 set type = "STRING" where name="TransactionTime"
 	update schema1 set type = "STRING" where name="HostTime"
 	update schema1 set type = "SYMBOL" where name="BSFlag"
@@ -29,11 +29,11 @@ def createTB(dbName,tableName){
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
 		dropTable(db,tableName)
-	columns =`Date`stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime
+	columns =`Date`Stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime
 	type=[DATE,SYMBOL,INT,INT,INT,TIME,DOUBLE,INT,SYMBOL,INT,INT,TIME]
 	orderData = table(1:0, columns,type)
-	//db.createPartitionedTable(orderData, tableName,`Date`stockcode)
-	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
+	//db.createPartitionedTable(orderData, tableName,`Date`Stockcode)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`Stockcode, sortColumns=`Stockcode`Date, keepDuplicates=ALL)
    }
 
 def readAllCSV(filepath, stock_date){
@@ -48,10 +48,10 @@ def readAllCSV(filepath, stock_date){
 		t = loadText(CSV_file_path,,schema1)
 		t = string2time(t)
 		targettable = loadTable("dfs://history","orderBook")
-		addColumn(t,["Date", "stockcode"],[DATE,SYMBOL])
-		update t set stockcode = strReplace(f[`filename],".csv","");
+		addColumn(t,["Date", "Stockcode"],[DATE,SYMBOL])
+		update t set Stockcode = strReplace(f[`filename],".csv","");
 		update t set Date = stock_date
-		reorderColumns!(t,`Date`stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime)
+		reorderColumns!(t,`Date`Stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime)
 		//print(t)
 		targettable.append!(t)
 		}

@@ -1,0 +1,11 @@
+dbName = "dfs://history"
+trans_tableName = "transBook"
+order_tableName = "orderBook"
+depth_tableName = "depthBook"
+
+tb1 = loadTable(dbName,order_tableName)
+tb2 = loadTable(dbName,trans_tableName)
+tb3 = loadTable(dbName,depth_tableName)
+
+tb_v = select Price,TransactionTime,Volume,cumsum(Volume) as cum_Volume from tb2 where  TransactionTime >= 09:30:00.000
+select min(TransactionTime),avg(price) from tb_v group by bar(cum_Volume,1000000)
