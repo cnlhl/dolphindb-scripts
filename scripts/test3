@@ -1,37 +1,21 @@
-def create_bid_TB_in_DB(dbName,tableName){  
-	db=database(directory=dbName);
-	if(existsTable(dbName,tableName))
-		dropTable(db,tableName)
-	columns =`Date`stockcode`BidOrderSeqNo`OrderType`TransactionTime`DepthMarketTime`Price`BidPrice1`Volume
-	type=[DATE,SYMBOL,INT,INT,TIME,TIME,DOUBLE,FLOAT,INT]
-	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`stockcode`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
-   }
-
-def create_ask_TB_in_DB(dbName,tableName){  
-	db=database(directory=dbName);
-	if(existsTable(dbName,tableName))
-		dropTable(db,tableName)
-	columns =`Date`stockcode`AskOrderSeqNo`OrderType`TransactionTime`DepthMarketTime`Price`AskPrice1`Volume
-	type=[DATE,SYMBOL,INT,INT,TIME,TIME,DOUBLE,FLOAT,INT]
-	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
-   }
-
 dbName = "dfs://history"
 trans_tableName = "transBook"
 order_tableName = "orderBook"
 depth_tableName = "depthBook"
-load_tableName_B = "Bcanceled"
-//load_tableName_S = "Scanceled"
+load_tableName_B = "B_canceled"
+load_tableName_S = "S_canceled"
+table_Name_rB = "RB_canceled"
+table_Name_rS = "RS_canceled"
 
-create_bid_TB_in_DB(dbName,load_tableName_B)
-//create_ask_TB_in_DB(dbName,load_tableName_S)
 
 tbB = loadTable(dbName,load_tableName_B)
-//tbS = loadTable(dbName,load_tableName_S)
+tbS = loadTable(dbName,load_tableName_S)
+tbRB = loadTable(dbName,table_Name_rB)
+tbRS = loadTable(dbName,table_Name_rS)
 
 tb1 = loadTable(dbName,order_tableName)
 tb2 = loadTable(dbName,trans_tableName)
 tb3 = loadTable(dbName,depth_tableName)
 
+//select * from tbRB
+select avg(Ratio) from tbRB

@@ -1,0 +1,85 @@
+def create_bid_TB_in_DB(dbName,tableName){  
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+	columns =`Date`stockcode`BidOrderSeqNo`OrderType`TransactionTime`CancelTime`Price`Volume
+	type=[DATE,SYMBOL,INT,INT,TIME,TIME,DOUBLE,INT]
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
+   }
+
+def create_ask_TB_in_DB(dbName,tableName){  
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+	columns =`Date`stockcode`AskOrderSeqNo`OrderType`TransactionTime`CancelTime`Price`Volume
+	type=[DATE,SYMBOL,INT,INT,TIME,TIME,DOUBLE,INT]
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
+   }
+
+def create_R_TB_in_DB(dbName,tableName){  
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+	columns =`Date`stockcode`Total_Volume`Robot_Volume`Ratio
+	type=[DATE,SYMBOL,LONG,LONG,DOUBLE]
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
+   }
+
+dbName = "dfs://history"
+trans_tableName = "transBook"
+order_tableName = "orderBook"
+depth_tableName = "depthBook"
+load_tableName_B = "B_canceled"
+load_tableName_S = "S_canceled"
+table_Name_rB = "RB_canceled"
+table_Name_rS = "RS_canceled"
+
+create_bid_TB_in_DB(dbName,load_tableName_B)
+create_ask_TB_in_DB(dbName,load_tableName_S)
+create_R_TB_in_DB(dbName,table_Name_rB)
+create_R_TB_in_DB(dbName,table_Name_rS)
+
+tbB = loadTable(dbName,load_tableName_B)
+tbS = loadTable(dbName,load_tableName_S)
+tbRB = loadTable(dbName,table_Name_rB)
+tbRS = loadTable(dbName,table_Name_rS)
+
+tb1 = loadTable(dbName,order_tableName)
+tb2 = loadTable(dbName,trans_tableName)
+tb3 = loadTable(dbName,depth_tableName)
+
+d = 2022.09.01
+count = 0
+
+for (t in 1..999){
+    target_stock = lpad(string(t),6,"0")
+    //empty_judgy
+    if(size(select * from tb2 where stockcode = target_stock limit 1)==0)
+        continue
+       //select canceled order
+	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransactionTime as CancelTime,Volume	from tb2 where CancelFlag = "C" and BSFlag = "B" and Date = d and stockcode = target_stock	
+	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransactionTime as CancelTime,Volume	from tb2 where CancelFlag = "C" and BSFlag = "S" and Date = d and stockcode = target_stock
+    //get order price
+	tb_order = select * from tb1 where Date = d and stockcode = target_stock
+	tb_B_cancel = select Date,stockcode,BidOrderSeqNo,OrderType,TransactionTime,CancelTime,Price,Volume from tb_B_cancel left join tb_order on tb_B_cancel.BidOrderSeqNo = tb_order.SeqNo 
+	tb_S_cancel = select Date,stockcode,AskOrderSeqNo,OrderType,TransactionTime,CancelTime,Price,Volume from tb_S_cancel left join tb_order on tb_S_cancel.AskOrderSeqNo = tb_order.SeqNo 
+	//get equal time
+ 	equal_B = select * from tb_B_cancel where OrderType = 0 and CancelTime < TransactionTime+00:00:03.000 and TransactionTime >= 09:30:00.000
+    equal_S = select * from tb_S_cancel where OrderType = 0 and CancelTime < TransactionTime+00:00:03.000 and TransactionTime >= 09:30:00.000
+	//load result into table
+    tb_B_cancel_sum=table(d as Date,target_stock as stockcode, sum(tb_B_cancel.Volume) as Total_Volume, sum(equal_B.Volume) as Robot_Volume, double(sum(equal_B.Volume))/double(sum(tb_B_cancel.Volume)) as Ratio)
+    tb_S_cancel_sum=table(d as Date,target_stock as stockcode, sum(tb_S_cancel.Volume) as Total_Volume, sum(equal_S.Volume) as Robot_Volume, double(sum(equal_S.Volume))/double(sum(tb_S_cancel.Volume)) as Ratio)
+    tbRB.append!(tb_B_cancel_sum)
+    tbRS.append!(tb_S_cancel_sum)
+	tbB.append!(equal_B)
+	tbS.append!(equal_S)
+
+    count = count+1
+}
+//select * from tbS
+print(count)
+select * from tbR
+//print(sum_bid1_canceled_volume)
