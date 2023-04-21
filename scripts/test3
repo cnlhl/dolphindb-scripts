@@ -1,21 +1,2 @@
-dbName = "dfs://history"
-trans_tableName = "transBook"
-order_tableName = "orderBook"
-depth_tableName = "depthBook"
-load_tableName_B = "B_canceled"
-load_tableName_S = "S_canceled"
-table_Name_rB = "RB_canceled"
-table_Name_rS = "RS_canceled"
-
-
-tbB = loadTable(dbName,load_tableName_B)
-tbS = loadTable(dbName,load_tableName_S)
-tbRB = loadTable(dbName,table_Name_rB)
-tbRS = loadTable(dbName,table_Name_rS)
-
-tb1 = loadTable(dbName,order_tableName)
-tb2 = loadTable(dbName,trans_tableName)
-tb3 = loadTable(dbName,depth_tableName)
-
-//select * from tbRB
-select avg(Ratio) from tbRB
+aggtb = loadTable("dfs://history","AggressiveOrderCount1")
+select * from aggtb

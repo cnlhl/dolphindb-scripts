@@ -1,0 +1,88 @@
+/*
+stock_code: 300,688
+ask1*102%
+bid1*98%
+transbook+orderbook(depth can't reflect changes taken within 3s, and sometimes neglect nearest change)
+
+for loops iterate by stockcode and date 
+    1. select target data( assigned code& date) into in-memory tablle
+        a. orderbook data : separate bid and sell;
+        b. transbook data : separate bid and sell; CancelFlag = "F"
+    2. get latest price from transbook,and update it to the order book
+        a. function: asof join
+    3. select those who corresponding to the definition of "aggressive"
+        a. for ask orders, its ask price is below 98% of bid1
+        b. for bid orders, its bid price is above 102% if ask1 
+    4. write them into a in-memory table
+
+Statistics on the data:
+for each stock: new table to record daily average ratio of aggressive order
+    1. accord to specific date of the former in-memory table, calculate ratio of the day
+    2. calculate the whole scene 
+*/
+
+def loadStockInfo(){
+    dbName = "dfs://stock_info"
+    tb1 = loadTable(dbName,"calendar")
+    tb2 = loadTable(dbName,"stock")
+    return tb1,tb2
+}
+
+def loadHistory(){
+    dbName = "dfs://history"
+    trans_tableName = "transBook"
+    order_tableName = "orderBook"
+    depth_tableName = "depthBook"
+    tb1 = loadTable(dbName,order_tableName)
+    tb2 = loadTable(dbName,trans_tableName)
+    tb3 = loadTable(dbName,depth_tableName)
+    return tb1,tb2,tb3
+}
+
+def create_statistic_table(dbName,tableName){  
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+	columns =`Date`stockcode`OrderType`AggressiveOrder`Totalorder`Ratio
+	type=[DATE,SYMBOL,SYMBOL,INT,INT,DOUBLE]
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`stockcode, sortColumns=`Date, keepDuplicates=ALL, sortKeyMappingFunction=[hashBucket{,5}])
+}
+
+def loadTargetData(tab,c,d){
+    ttb = select * from tab where Date = d and stockcode = c
+    return ttb
+}
+
+order,trans,depth = loadHistory()
+//运行结果储存在AggressiveOrderCount表中
+create_statistic_table("dfs://history","AggressiveOrderCount1")
+//create_statistic_table("dfs://history","AggressiveOrderCount")
+aggtb = loadTable("dfs://history","AggressiveOrderCount1")
+for(s in 688000..688999){
+    if(size(select * from order where stockcode = string(s) limit 1)==0)
+        continue
+    for(d in 2022.10.07..2022.10.14){
+        if(size(select * from order where Date = d limit 1)==0)
+            continue
+        //加载数据
+        orderdata = loadTargetData(order,string(s),d)
+        transdata = loadTargetData(trans,string(s),d)
+        //区分买单/卖单
+        odBdata = select * from orderdata where BSFlag = "B" and OrderType = 0
+        odSdata = select * from orderdata where BSFlag = "S" and OrderType = 0
+        tsSdata = select * from transdata where BSFlag = "S" and CancelFlag = "F"
+        tsBdata = select * from transdata where BSFlag = "B" and CancelFlag = "F"
+        //筛选：高于ask1*102%的买单和低于bid1*98%的卖单
+        odBdata_aj = select * from aj(odBdata,tsSdata,`TransactionTime)
+        odBdata_aj = select SeqNo,Price,tsSdata_Price,TransactionTime,tsSdata_TransactionTime from odBdata_aj where Price>=tsSdata_Price*1.02 and tsSdata_Price!=NULL
+        odSdata_aj = select * from aj(odSdata,tsBdata,`TransactionTime)
+        odSdata_aj = select SeqNo,Price,tsBdata_Price,TransactionTime,tsBdata_TransactionTime from odSdata_aj where Price<=tsBdata_Price*0.98 and tsBdata_Price!=NULL
+        //将结果存入表中
+        insertdataB = table(d as Date,string(s) as stockcode,"B" as OrderType,count(odBdata_aj) as AggressiveOrder,count(odBdata) as Totalorder,double(count(odBdata_aj))/double(count(odBdata)) as ratio)
+        insertdataS = table(d as Date,string(s) as stockcode,"S" as OrderType,count(odSdata_aj) as AggressiveOrder,count(odSdata) as Totalorder,double(count(odSdata_aj))/double(count(odSdata)) as ratio)
+        tableInsert(aggtb,insertdataB)
+        tableInsert(aggtb,insertdataS)
+    }
+}
+

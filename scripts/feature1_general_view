@@ -1,0 +1,19 @@
+db = database("dfs://history")
+db1 = database("dfs://stock_info")
+calendar = loadTable(db1,"calendar")
+transtb = loadTable(db,"transBook")
+depthtb = loadTable(db,"depthBook")
+ordertb = loadTable(db,"orderBook")
+
+d = 2022.09.01
+target_stock = "000001"
+//select canceled order
+tb_B_cancel = select Date,stockcode,BidOrderSeqNo,TransactionTime as CancelTime,Volume,Price as finish_price	from transtb where CancelFlag = "F" and BSFlag = "B" and Date = d and stockcode = target_stock	
+//tb_S_cancel = select Date,stockcode,AskOrderSeqNo,TransactionTime as CancelTime,Volume	from tb2 where CancelFlag = "C" and BSFlag = "S" and Date = d and stockcode = target_stock
+//get order price
+tb_order = select * from ordertb where Date = d and stockcode = target_stock
+tb_B_cancel = select Date,stockcode,BidOrderSeqNo,OrderType,TransactionTime,CancelTime,Price,Volume,finish_price from tb_B_cancel left join tb_order on tb_B_cancel.BidOrderSeqNo = tb_order.SeqNo 
+//tb_S_cancel = select Date,stockcode,AskOrderSeqNo,OrderType,TransactionTime,CancelTime,Price,Volume from tb_S_cancel left join tb_order on tb_S_cancel.AskOrderSeqNo = tb_order.SeqNo 
+//get equal time
+select * from tb_B_cancel where finish_price != Price
+//equal_S = select * from tb_S_cancel where OrderType = 0 and CancelTime < TransactionTime+00:00:03.000 and TransactionTime >= 09:30:00.000
