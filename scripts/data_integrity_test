@@ -1,0 +1,26 @@
+tb = loadTable("dfs://history","depthBook")
+info = loadTable("dfs://stock_info","calendar")
+info = select * from info where Date>=2021.09.06 and Date <= 2022.12.18
+counts = array(INT,0)
+for(i in info){
+    stock = select distinct StockCode from tb where Date = i["Date"]
+    data = count(stock)
+    if(size(counts)==0){
+        counts.append!(data)
+        print("append data:"+i["Date"]+"->"+data)
+    }else{
+        if(abs(data/avg(counts)-1)<0.1){
+            counts.append!(data)
+            print("append data:"+i["Date"]+"->"+data)
+        }else{
+            print("missing data:"+i["Date"]+"->"+data)
+        }
+    }
+}
+
+// stock = select distinct StockCode from tb where Date = 2021.09.01
+// data = count(stock)
+// print(data)
+
+
+

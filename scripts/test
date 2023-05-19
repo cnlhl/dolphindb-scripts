@@ -1,0 +1,11 @@
+start_date = 2022.09.01
+end_date = 2022.09.02
+target_stock = "000001"
+horizen = 15m
+
+
+trans = loadTable("dfs://history","transBook")
+trans = select * from trans where Date>=start_date and Date<=end_date and StockCode=target_stock and CancelFlag="F"
+update trans set Timestamp=concatDateTime(Date,TransactionTime)
+trans = select last(Price)as Price from trans group by interval(Timestamp,horizen,"prev") as Time
+trans
