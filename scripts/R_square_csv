@@ -5,23 +5,45 @@ def get_target_stock(start_date,end_date,target_stock,horizen){
     update trans set Timestamp=concatDateTime(Date,TransactionTime)
     trans = select last(Price)as Price from trans group by interval(Timestamp,horizen,"prev") as Time
     update trans set stock_return = eachPre(ratio,Price)-1
+    return trans
 }
 
-def readdata(filepath,start_date,end_date,horizen){
+def R_gen(t, method="ALL"){
+    if(method == "UP"){
+        ct = select * from t where stock_return>=0
+    }else if(method == "DOWN"){
+        ct = select * from t where stock_return<0
+    }else{
+        ct = t
+    }
+    sse =  sum(pow((ct.feature_value-ct.stock_return),2))
+    sst =  sum(pow((ct.stock_return - avg(ct.stock_return)),2))
+    return 1-(sse/sst)
+}
+
+def readdata(filepath,start_date,end_date,horizen,method="ALL"){
     file_in = loadText(filename=filepath,containHeader=true)
     names = columnNames(file_in)
-    for(i in 1..size(names)){
-        target_stock = s[i][1:]
-        tmp_tb=table(file_in[s[0]],file_in[s[i]] as feature)
+    R = array(DOUBLE, 0)
+    for(i in 1..size(names)-1){
+        target_stock = names[i][1:]
+        tmp_tb=table(file_in[names[0]],file_in[names[i]] as feature_value)
         tmp_trans=get_target_stock(start_date,end_date,target_stock,horizen)
-        select * from tmp_tb left join tmp_trans on tmp_tb.Timestamp=tmp_trans.Time
-        
+        tb = select * from tmp_tb left join tmp_trans on tmp_tb.Timestamp=tmp_trans.Time
+        R.append!(R_gen(tb,method))
     }
+    return avg(R)
 }
 
+
+
+start_date = 2022.09.01
+end_date = 2022.09.01
+horizen = 15m
 filepath = "/home/ddb/stock_data.csv"
-tb=loadText(filepath,,,,,true)
-tb
+
+a=readdata(filepath,start_date,end_date,horizen)
+a
 
 //tb1 = table(tb[s[0]],tb[s[1]])
 

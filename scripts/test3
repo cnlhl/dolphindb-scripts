@@ -1,2 +1,13 @@
-aggtb = loadTable("dfs://history","AggressiveOrderCount1")
-select * from aggtb
+def createTB_in_DB(dbName,tableName){  
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+	columns =`Date`Stockcode`DepthMarketTime`Status`PreClose`Open`High`Low`Close`AskPrice1`AskPrice2`AskPrice3`AskPrice4`AskPrice5`AskPrice6`AskPrice7`AskPrice8`AskPrice9`AskPrice10`AskVol1`AskVol2`AskVol3`AskVol4`AskVol5`AskVol6`AskVol7`AskVol8`AskVol9`AskVol10`BidPrice1`BidPrice2`BidPrice3`BidPrice4`BidPrice5`BidPrice6`BidPrice7`BidPrice8`BidPrice9`BidPrice10`BidVol1`BidVol2`BidVol3`BidVol4`BidVol5`BidVol6`BidVol7`BidVol8`BidVol9`BidVol10`Trades`Volume`Turnover`TotalBidVol`TotalAskVol`WeightedAvgBidPrice`WeightedAvgAskPrice`HighLimit`LowLimit`HostTime
+	type=[DATE,SYMBOL,TIME,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,DOUBLE,INT,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIME]
+
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`Stockcode, sortColumns=`Stockcode`Date, keepDuplicates=ALL)
+   }
+
+createTB_in_DB("dfs://history","depthBook")
+

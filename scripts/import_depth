@@ -1,4 +1,4 @@
-login("admin","123456")
+//使用前请再三确认droptable是否被注释掉了！！！！！！!!!!!!!!!!
 
 def judge_empty(CSV_file_path){
 	s = file(CSV_file_path)
@@ -28,10 +28,9 @@ def string2time(mutable t){
 def createTB_in_DB(dbName,tableName){  
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
-		dropTable(db,tableName)
+		//dropTable(db,tableName)
 	columns =`Date`Stockcode`DepthMarketTime`Status`PreClose`Open`High`Low`Close`AskPrice1`AskPrice2`AskPrice3`AskPrice4`AskPrice5`AskPrice6`AskPrice7`AskPrice8`AskPrice9`AskPrice10`AskVol1`AskVol2`AskVol3`AskVol4`AskVol5`AskVol6`AskVol7`AskVol8`AskVol9`AskVol10`BidPrice1`BidPrice2`BidPrice3`BidPrice4`BidPrice5`BidPrice6`BidPrice7`BidPrice8`BidPrice9`BidPrice10`BidVol1`BidVol2`BidVol3`BidVol4`BidVol5`BidVol6`BidVol7`BidVol8`BidVol9`BidVol10`Trades`Volume`Turnover`TotalBidVol`TotalAskVol`WeightedAvgBidPrice`WeightedAvgAskPrice`HighLimit`LowLimit`HostTime
 	type=[DATE,SYMBOL,TIME,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,DOUBLE,INT,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIME]
-
 	orderData = table(1:0, columns,type)
 	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`Stockcode, sortColumns=`Stockcode`Date, keepDuplicates=ALL)
    }
@@ -60,8 +59,8 @@ def readAllCSV(filepath, stock_date){
 		date_file_path = filepath + fname + "/"
 		//print(date_file_path)
 		filename2date = temporalParse(fname,"yyyyMMdd")
-		startdate = date(2022.09.01)
-		enddate = date(2022.12.01)
+		startdate = date(2022.01.04)
+		enddate = date(2022.07.26)
 		if(filename2date>= startdate and filename2date<= enddate){
 			print(fname)
 			readAllCSV(date_file_path, filename2date)
@@ -86,7 +85,7 @@ def readAllCSV(filepath, stock_date){
 
 dbName = "dfs://history"
 tableName = "depthBook"
-createTB_in_DB(dbName,tableName)
+//createTB_in_DB(dbName,tableName)
 tb = loadTable(dbName,tableName)
-filepath = "/mnt/SandboxData/Level2CSV/depth/"
+filepath = "/mnt/ProductData/Level2CSV/depth/"
 submit_readDateFile(filepath);
