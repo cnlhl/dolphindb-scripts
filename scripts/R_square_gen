@@ -11,7 +11,7 @@ def trans_convert(target_date,target_stock,horizen){
 }
 
 def profit_gen(mutable t){
-    update t set stock_return = eachPre(ratio,Price)-1
+    update t set stock_return = eachPost(ratio,Price)-1
 }
 
 def R_gen(t, method){

@@ -4,7 +4,7 @@ def get_target_stock(start_date,end_date,target_stock,horizen){
     trans = select * from trans where Date>=start_date and Date<=end_date and StockCode=target_stock and CancelFlag="F"
     update trans set Timestamp=concatDateTime(Date,TransactionTime)
     trans = select last(Price)as Price from trans group by interval(Timestamp,horizen,"prev") as Time
-    update trans set stock_return = eachPre(ratio,Price)-1
+    update trans set stock_return = eachPost(ratio,Price)-1
     return trans
 }
 
