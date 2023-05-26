@@ -1,4 +1,3 @@
-login("admin","123456")
 
 def judge_empty(CSV_file_path){
 	s = file(CSV_file_path)
@@ -18,12 +17,13 @@ def string2time(mutable t){
 
 def getSchema(csv){
 	schema1=extractTextSchema(csv)
-	update schema1 set type = "SYMBOL" where name="Stockcode"
+	update schema1 set type = "SYMBOL" where name="StockCode"
 	update schema1 set type = "STRING" where name="TransactionTime"
 	update schema1 set type = "STRING" where name="HostTime"
 	update schema1 set type = "INT" where name="Amount"
 	update schema1 set type = "SYMBOL" where name="CancelFlag"
 	update schema1 set type = "SYMBOL" where name="BSFlag"
+	update schema1 set type = "SYMBOL" where name="OrderType"
 	//update schema1 set name=`Amount where name="TotalAmount" 
 	return schema1
    }
@@ -32,10 +32,10 @@ def createTB_in_DB(dbName,tableName){
 	db=database(directory=dbName);
 	if(existsTable(dbName,tableName))
 		return
-	columns =`Date`Stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime
+	columns =`Date`StockCode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime
 	type=[DATE,SYMBOL,TIME,INT,INT,DOUBLE,INT,INT,SYMBOL,SYMBOL,INT,INT,INT,TIME]
 	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`Stockcode, sortColumns=`Stockcode`Date, keepDuplicates=ALL)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`StockCode, sortColumns=`StockCode`Date, keepDuplicates=ALL)
    }
 
 def readAllCSV(filepath, stock_date){
@@ -50,10 +50,10 @@ def readAllCSV(filepath, stock_date){
 		t = loadText(CSV_file_path,,schema1)
 		t = string2time(t)
 		targettable = loadTable("dfs://history","transBook")
-		addColumn(t,["Date", "Stockcode"],[DATE,SYMBOL])
-		update t set Stockcode = strReplace(f[`filename],".csv","");
+		addColumn(t,["Date", "StockCode"],[DATE,SYMBOL])
+		update t set StockCode = strReplace(f[`filename],".csv","");
 		update t set Date = stock_date
-		reorderColumns!(t,`Date`Stockcode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime)
+		reorderColumns!(t,`Date`StockCode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime)
 		//print(t)
 		targettable.append!(t)
 		}
@@ -63,8 +63,8 @@ def readDateFile(filepath,fname){
     date_file_path = filepath + fname + "/"
 	//print(date_file_path)
     filename2date = temporalParse(fname,"yyyyMMdd")
-    startdate = date(2022.09.01)
-    enddate = date(2022.12.01)
+    startdate = date(2021.11.03)
+    enddate = date(2021.12.31)
     if(filename2date>= startdate and filename2date<= enddate){
         print(fname)
         readAllCSV(date_file_path, filename2date)
@@ -90,5 +90,5 @@ def submit_readDateFile(filepath){
 dbName = "dfs://history"
 tableName = "transBook"
 createTB_in_DB(dbName,tableName)
-filepath = "/mnt/ProductData/Level2CSV/trans/"
+filepath = "/mnt/SandboxData/Level2CSV/trans/"
 submit_readDateFile(filepath);

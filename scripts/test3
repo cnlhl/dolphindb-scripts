@@ -1,13 +1,26 @@
-def createTB_in_DB(dbName,tableName){  
-	db=database(directory=dbName);
-	if(existsTable(dbName,tableName))
-		dropTable(db,tableName)
-	columns =`Date`Stockcode`DepthMarketTime`Status`PreClose`Open`High`Low`Close`AskPrice1`AskPrice2`AskPrice3`AskPrice4`AskPrice5`AskPrice6`AskPrice7`AskPrice8`AskPrice9`AskPrice10`AskVol1`AskVol2`AskVol3`AskVol4`AskVol5`AskVol6`AskVol7`AskVol8`AskVol9`AskVol10`BidPrice1`BidPrice2`BidPrice3`BidPrice4`BidPrice5`BidPrice6`BidPrice7`BidPrice8`BidPrice9`BidPrice10`BidVol1`BidVol2`BidVol3`BidVol4`BidVol5`BidVol6`BidVol7`BidVol8`BidVol9`BidVol10`Trades`Volume`Turnover`TotalBidVol`TotalAskVol`WeightedAvgBidPrice`WeightedAvgAskPrice`HighLimit`LowLimit`HostTime
-	type=[DATE,SYMBOL,TIME,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,DOUBLE,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,INT,DOUBLE,INT,INT,DOUBLE,DOUBLE,DOUBLE,DOUBLE,TIME]
+def feature_gen(mutable t){
+    update t set Price_diff = deltas(t.Price)
+}
 
-	orderData = table(1:0, columns,type)
-	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`Stockcode, sortColumns=`Stockcode`Date, keepDuplicates=ALL)
-   }
+def trans_convert(target_date,target_stock,horizen){
+    trans = loadTable("dfs://history","transBook")
+    trans = select * from trans where Date = target_date and stockcode = target_stock and CancelFlag = "F"
+    trans = select last(Price)as Price from trans group by interval(TransactionTime,horizen,"prev") as Time
+    return trans
+}
 
-createTB_in_DB("dfs://history","depthBook")
+def profit_gen(mutable t){
+    update t set stock_return = eachPre(ratio,Price)-1
+}
 
+def R_square_gen(target_stock, target_date ,horizen){
+    string2date = temporalParse(target_date,"yyyyMMdd")
+    rtb = trans_convert(string2date,target_stock,duration(horizen))
+    feature_gen(rtb)
+    profit_gen(rtb)
+    sse =  sum(pow((rtb.Price_diff-rtb.stock_return),2))
+    sst =  sum(pow((rtb.stock_return - avg(rtb.stock_return)),2))
+    return 1-(sse/sst)
+}
+
+print(R_square_gen(""))
