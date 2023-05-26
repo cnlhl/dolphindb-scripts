@@ -27,8 +27,8 @@ def string2time(mutable t){
 
 def createTB(dbName,tableName){ 
 	db=database(directory=dbName);
-	if(existsTable(dbName,tableName))
-		dropTable(db,tableName)
+	//if(existsTable(dbName,tableName))
+		//dropTable(db,tableName)
 	columns =`Date`Stockcode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime
 	type=[DATE,SYMBOL,INT,INT,INT,TIME,DOUBLE,INT,SYMBOL,INT,INT,TIME]
 	orderData = table(1:0, columns,type)
@@ -86,7 +86,7 @@ def submit_readDateFile(filepath){
 
 dbName = "dfs://history"
 tableName = "orderBook"
-createTB(dbName,tableName)
+//createTB(dbName,tableName)
 tb = loadTable(dbName,tableName)
 filepath = "/mnt/ProductData/Level2CSV/order/"
 submit_readDateFile(filepath);

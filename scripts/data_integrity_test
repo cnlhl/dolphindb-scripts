@@ -1,4 +1,4 @@
-tb = loadTable("dfs://history","depthBook")
+tb = loadTable("dfs://history","orderBook")
 info = loadTable("dfs://stock_info","calendar")
 info = select * from info where Date>=2021.09.06 and Date <= 2022.12.18
 counts = array(INT,0)
