@@ -1,0 +1,27 @@
+// 它包括market order，直接设为1
+// 我叫他generalized market order
+// ((BidPrice - Ask1Price + 0.01) / 0.01 - BidVol / Ask1Vol * 2) / 10
+// 前一项是价格的击穿挡位，后一项是交易量的击穿挡位，除以10是在规约化
+// 以及把limit order区分出类似market order和不类似market order的部分
+
+
+def feature_gen(transtb,ordertb,depthtb) {
+    order_tmp1 = select * from ordertb where BSFlag = "B" and TransactionTime > = 09:30:00.000
+    order_tmp = select TransactionTime,Price,Volume,DepthMarketTime,AskPrice1,AskVol1 from aj(order_tmp1,depthtb,`TransactionTime,`DepthMarketTime)
+    update order_tmp set feature = ((Price - AskPrice1 + 0.01) / 0.01 - Volume / AskVol1 * 2) / 10
+    return order_tmp
+}
+
+target_date = 2022.09.01
+target_stock = `000001
+order = loadTable("dfs://history","orderBook")
+trans = loadTable("dfs://history","transBook")
+depth = loadTable("dfs://history","depthBook")
+depth_d = select * from depth where Date = target_date and StockCode = target_stock
+trans_d = select * from trans where Date = target_date and StockCode = target_stock and CancelFlag = "F"
+order_d = select * from order where Date = target_date and StockCode = target_stock
+// res = feature_gen(trans_d,order_d,depth_d)
+
+res = feature_gen(trans_d,order_d,depth_d)
+select * from res
+

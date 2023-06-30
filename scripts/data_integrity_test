@@ -1,6 +1,6 @@
-tb = loadTable("dfs://history","orderBook")
+tb = loadTable("dfs://history","depthBook")
 info = loadTable("dfs://stock_info","calendar")
-info = select * from info where Date>=2021.09.06 and Date <= 2022.12.18
+info = select * from info where Date>=2021.06.01 and Date <= 2022.12.18
 counts = array(INT,0)
 for(i in info){
     stock = select distinct StockCode from tb where Date = i["Date"]
@@ -21,6 +21,3 @@ for(i in info){
 // stock = select distinct StockCode from tb where Date = 2021.09.01
 // data = count(stock)
 // print(data)
-
-
-

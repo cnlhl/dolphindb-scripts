@@ -1,20 +1,51 @@
+/*
+feature_gen 格式：
+def feature_gen(transtb,ordertb,depthtb){
+    ****
+    return result
+}
+result为两列表，第一列为时间（频率与horizen一致）：列名为MerketTime；第二列为feature：列名为feature；
+*/
 
-def feature_gen(mutable t){
-    update t set feature_value = deltas(t.Price)
+
+def feature_gen(transtb,ordertb,depthtb) {
+    interval_ms = 3 * 1000
+    three_group = <(floor(TransactionTime$INT / interval_ms) * interval_ms)$TIME>
+    afterAuction = <TransactionTime >= 09:30:00.000>
+    limitOrderOnly = <OrderType = 0>
+    buyOrderOnly = <BSFlag = "B">
+    sellOrderOnly = <BSFlag = "S">
+    t1 = sql(
+      select=(sqlCol("*"), sqlColAlias(three_group, "three")),
+      from=ordertb, where=afterAuction
+    )
+    eval(t1)
+    t2 = sql(
+      select=sqlCol(`Price`BSFlag`Volume`three`OrderType),
+      from=t1,
+      where=[limitOrderOnly, sellOrderOnly]
+    )
+    t2 = eval(t2)
+    t3 = select t2.*, depthtb.Close, max((t2.Price / depthtb.Close - 1), -0.2) as diff from t2 inner join depthtb on t2.three=depthtb.DepthMarketTime where t2.Price < depthtb.Close
+    t4 = select three, wavg(diff, Volume) as feature from t3 group by three
+    result = select three as MarketTime, feature from t4
+    print(result)
+    return result
+  }
+
+
+def each_return(time0,time1){
+    return (time1/time0-1)
 }
 
-def trans_convert(target_date,target_stock,horizen){
-    trans = loadTable("dfs://history","transBook")
-    trans = select * from trans where Date = target_date and stockcode = target_stock and CancelFlag = "F"
-    trans = select last(Price)as Price from trans group by interval(TransactionTime,horizen,"prev") as Time
-    return trans
+def return_gen(transtb,target_date,target_stock,horizen){
+    tb = select last(Price)as Price from transtb group by interval(TransactionTime,horizen,"prev") as MarketTime
+    update tb set stock_return = eachPost(each_return,Price,Price[-1])
+    return tb
 }
 
-def profit_gen(mutable t){
-    update t set stock_return = eachPost(ratio,Price)-1
-}
-
-def R_gen(t, method){
+def R_gen(return_tb,feature_tb, method){
+    t = select * from feature_tb left join return_tb on feature_tb.MarketTime = return_tb.MarketTime 
     if(method == "UP"){
         ct = select * from t where stock_return>=0
     }else if(method == "DOWN"){
@@ -22,20 +53,22 @@ def R_gen(t, method){
     }else{
         ct = t
     }
-    sse =  sum(pow((ct.feature_value-ct.stock_return),2))
-    sst =  sum(pow((ct.stock_return - avg(ct.stock_return)),2))
-    return 1-(sse/sst)
+    res = ols(ct.stock_return,ct.feature,1,2)
+    return res["RegressionStat"]["statistics"][0]
 }
 
-
-
-def R_square_gen(target_stock, target_date ,horizen, method = "ALL"){
-    string2date = temporalParse(target_date,"yyyyMMdd")
-    rtb = trans_convert(string2date,target_stock,duration(horizen))
-    feature_gen(rtb)
-    profit_gen(rtb)
-    return R_gen(rtb,method)
+def R_square_gen(target_stock, string_date ,horizen, method = "ALL"){
+    target_date = temporalParse(string_date,"yyyyMMdd")
+    depthtb = loadTable("dfs://history","depthBook")
+    ordertb = loadTable("dfs://history","orderBook")
+    transtb = loadTable("dfs://history","transBook")
+    depth_d = select * from depthtb where Date = target_date and StockCode = target_stock
+    trans_d = select * from transtb where Date = target_date and StockCode = target_stock and CancelFlag = "F"
+    order_d = select * from ordertb where Date = target_date and StockCode = target_stock
+    return_tb = return_gen(trans_d,target_date,target_stock,duration(horizen))
+    feature_tb = feature_gen(trans_d,order_d,depth_d)
+    return R_gen(return_tb,feature_tb,method)
 }
 
-R = R_square_gen("000001","20210902","30m","DOWN")
+R = R_square_gen("000002","20220307","3s","ALL")
 print(R)

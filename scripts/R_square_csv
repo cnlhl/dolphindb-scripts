@@ -1,10 +1,13 @@
+def each_return(time0,time1){
+    return (time1/time0-1)
+}
 
 def get_target_stock(start_date,end_date,target_stock,horizen){
     trans = loadTable("dfs://history","transBook")
     trans = select * from trans where Date>=start_date and Date<=end_date and StockCode=target_stock and CancelFlag="F"
     update trans set Timestamp=concatDateTime(Date,TransactionTime)
     trans = select last(Price)as Price from trans group by interval(Timestamp,horizen,"prev") as Time
-    update trans set stock_return = eachPost(ratio,Price)-1
+    update trans set stock_return = eachPost(each_return,Price)
     return trans
 }
 
@@ -16,16 +19,16 @@ def R_gen(t, method="ALL"){
     }else{
         ct = t
     }
-    sse =  sum(pow((ct.feature_value-ct.stock_return),2))
-    sst =  sum(pow((ct.stock_return - avg(ct.stock_return)),2))
-    return 1-(sse/sst)
+    res = ols(ct.stock_return,ct.feature_value,1,2)
+    return res["RegressionStat"]["statistics"][0]
 }
 
 def readdata(filepath,start_date,end_date,horizen,method="ALL"){
     file_in = loadText(filename=filepath,containHeader=true)
     names = columnNames(file_in)
     R = array(DOUBLE, 0)
-    for(i in 1..size(names)-1){
+    for(i in 1..(size(names)-1)){
+        print(i)
         target_stock = names[i][1:]
         tmp_tb=table(file_in[names[0]],file_in[names[i]] as feature_value)
         tmp_trans=get_target_stock(start_date,end_date,target_stock,horizen)

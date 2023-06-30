@@ -1,10 +1,3 @@
-dbName = "dfs://history"
-trans_tableName = "transBook"
-order_tableName = "orderBook"
-depth_tableName = "depthBook"
+tb = loadTable("dfs://history","orderBook")
 
-tb1 = loadTable(dbName,order_tableName)
-tb2 = loadTable(dbName,trans_tableName)
-tb3 = loadTable(dbName,depth_tableName)
-
-tb_v = select Price,TransactionTime,Volume,Amount,CancelFlag,stockcode,Date,cumsum(Amount) as cum_Amount from tb2 where TransactionTime >= 09:30:00.000 and CancelFlag="F" and stockcode = "300630" and Date = 2022.09.01
+select top 100* from tb
