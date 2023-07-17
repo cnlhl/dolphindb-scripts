@@ -1,0 +1,104 @@
+
+def judge_empty(CSV_file_path){
+	s = file(CSV_file_path)
+   	len = s.seek(0,TAIL)
+   	if(len==1) 
+		return true
+	return false
+}
+
+def getSchema(csv){
+	schema1=extractTextSchema(csv)
+    update schema1 set type = "INT" where name = "timestamp";
+    update schema1 set type = "DOUBLE" where name = "prc";
+    update schema1 set type = "INT" where name = "vol";
+    update schema1 set type = "DOUBLE" where name = "b1";
+    update schema1 set type = "INT" where name = "bv1";
+    update schema1 set type = "DOUBLE" where name = "s1";
+    update schema1 set type = "INT" where name = "sv1";
+    update schema1 set type = "INT" where name = "pos";
+    update schema1 set type = "DOUBLE" where name = "amt";
+	return schema1
+   }
+
+def int2time(mutable t){
+	timestamp = time(exec timestamp from t)
+	t.replaceColumn!(`timestamp,timestamp)
+    return t
+}
+
+def createTB(dbName,tableName){ 
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		// dropTable(db,tableName)
+		return
+	columns = `Date`Contract`DNflag`timestamp`prc`vol`b1`bv1`s1`sv1`pos`amt
+	type=[DATE,SYMBOL,SYMBOL,TIME,DOUBLE,INT,DOUBLE,INT,DOUBLE,INT,INT,DOUBLE]
+	orderData = table(1:0, columns,type)
+	//db.createPartitionedTable(orderData, tableName,`Date`StockCode)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`Contract, sortColumns=`Contract`Date, keepDuplicates=ALL)
+   }
+
+def readAllCSV(filepath, CTA_date,CTA_DNflag){
+	filelist = files(filepath)
+	for(f in filelist){
+		CSV_file_path = filepath + f[`filename]
+		if(f[`filename][0:2] == "00")
+			continue
+		//print(CSV_file_path)
+		//print(stock_date)
+		if(judge_empty(CSV_file_path))
+			continue
+		schema1 = getSchema(CSV_file_path)
+		t = loadText(CSV_file_path,,schema1)
+		t = int2time(t)
+		targettable = loadTable("dfs://CTA_history","testBook")
+		addColumn(t,["Date", "Contract","DNflag"],[DATE,SYMBOL,SYMBOL])
+		update t set Contract = strReplace(f[`filename],"_tick.csv","");
+		update t set Date = CTA_date
+        update t set DNflag = CTA_DNflag
+		reorderColumns!(t,["Date","Contract","DNflag","timestamp","prc","vol","b1","bv1","s1","sv1","pos","amt"])
+		//print(t)
+		targettable.append!(t)
+		}
+	}
+
+def readDateFile(filepath,fname,DNflag){
+	date_file_path = filepath + fname + "/"
+	//print(date_file_path)
+	filename2date = temporalParse(fname,"yyyyMMdd")
+	startdate = date(2022.01.01)
+	enddate = date(2023.12.31)
+	if(filename2date>= startdate and filename2date<= enddate){
+		print(fname)
+		readAllCSV(date_file_path, filename2date, DNflag)
+	}
+}
+
+def loop_readDateFile(filepath,filenames,DNflag){
+	loop(readDateFile{filepath,},filenames,DNflag)
+}
+
+def submit_readDateFile(filepath,DNflag){
+	filelist = files(filepath)
+	parallalLevel = 15;
+	//to be finished
+	print(filelist)
+	filenames = exec filename from filelist
+	for(f in filenames.cut(size(filelist)/parallalLevel))
+		submitJob("loadCTAData", "loadCTA",loop_readDateFile,filepath,f,DNflag)
+}
+
+def readCTAfile(filepath){
+    day_filepath = filepath + "dd/"
+    // night_filepath = filepath + "nn/"
+    submit_readDateFile(day_filepath,"d")
+    // submit_readDateFile(night_filepath,"n")
+}
+
+dbName = "dfs://CTA_history"
+tableName = "testBook"
+createTB(dbName,tableName)
+tb = loadTable(dbName,tableName)
+filepath = "/mnt/SandboxData/CTA_tick/_tick/"
+readCTAfile(filepath);
