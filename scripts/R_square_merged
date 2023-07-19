@@ -1,0 +1,131 @@
+def feature_gen(transtb,ordertb,depthtb,limitations) {
+    interval_ms = 3 * 1000
+    three_group = <(floor(TransactionTime$INT / interval_ms) * interval_ms)$TIME>
+    afterAuction = <TransactionTime >= 09:30:00.000>
+    limitOrderOnly = <OrderType = "0">
+    buyOrderOnly = <BSFlag = "B">
+    sellOrderOnly = <BSFlag = "S">
+    t1 = sql(
+      select=(sqlCol("*"), sqlColAlias(three_group, "three")),
+      from=ordertb, where=afterAuction
+    )
+    eval(t1)
+    t2 = sql(
+      select=sqlCol(`Price`BSFlag`Volume`three`OrderType),
+      from=t1,
+      where=[limitOrderOnly, sellOrderOnly]
+    )
+    t2 = eval(t2)
+    t3 = select t2.*, depthtb.Close, max((t2.Price / depthtb.Close - 1), -0.2) as diff from t2 inner join depthtb on t2.three=depthtb.DepthMarketTime where t2.Price < depthtb.Close
+    t4 = select three, wavg(diff, Volume) as feature from t3 group by three
+    result = select three as MarketTime, feature from t4
+    return result
+}
+
+def each_return(time0,time1){ return (time1/time0-1)}
+
+def return_gen(transtb,limitations){
+    tb = select * from transtb where CancelFlag = "F"
+    tb = select last(Price)as Price from tb group by interval(TransactionTime,limitations["frequency"],"prev",closed = "right",label = "right") as MarketTime
+    tb = select * from tb where MarketTime >= limitations["start_time"] and MarketTime <= limitations["end_time"]
+    update tb set StockReturn = eachPost(each_return,Price,Price[-1])
+    return tb
+}
+
+def R_gen(t, method){
+    if(method == "UP"){
+        ct = select * from t where StockReturn>=0
+    }else if(method == "DOWN"){
+        ct = select * from t where StockReturn<0
+    }else{
+        ct = t
+    }
+    res = ols(ct.StockReturn,ct.feature,1,2)
+    return res["RegressionStat"]["statistics"][0]
+}
+
+def load_3tables(target_date,target_stock){
+    depthtb = loadTable("dfs://history","depthBook")
+    ordertb = loadTable("dfs://history","orderBook")
+    transtb = loadTable("dfs://history","transBook")
+    depth_d = select * from depthtb where Date = target_date and StockCode = target_stock
+    trans_d = select * from transtb where Date = target_date and StockCode = target_stock
+    order_d = select * from ordertb where Date = target_date and StockCode = target_stock
+    return depth_d,trans_d,order_d
+}
+
+
+def R_square(feature_file,target_stock, target_date ,limitations){
+    if(limitations["file_flag"] == 1 ){
+        depth_d,trans_d,order_d = load_3tables(target_date,target_stock[1:])
+        feature_tb = select * from feature_file where date(Timestamp) = target_date
+        feature_tb = table(time(feature_tb["Timestamp"]) as MarketTime,feature_tb[target_stock] as feature)
+    }else{
+        depth_d,trans_d,order_d = load_3tables(target_date,target_stock)
+        feature_tb = feature_gen(trans_d,order_d,depth_d,limitations)
+        feature_tb = select * from feature_tb where MarketTime <= 11:30:00 or MarketTime >= 13:00:00 
+    }
+    return_tb = return_gen(trans_d,limitations)
+    match_tb = select * from feature_tb left join return_tb on feature_tb.MarketTime = return_tb.MarketTime 
+    print(match_tb)
+    try{
+        return R_gen(match_tb,limitations["method"]),match_tb
+    }catch(ex){
+        print("error when processing stock: "+target_stock)
+        print("detail:",ex)
+    }
+}
+
+def loop_caculate(feature_file,limitations,stocks){
+    trading_days = getMarketCalendar('SSE', limitations["start_date"], limitations["end_date"])
+
+    print(trading_days)
+    res = table(1:0,["Date","Stock","R"],[DATE,SYMBOL,DOUBLE])
+    feature = table(1:0,["Date","Stockcode","MarketTime","Feature","Price","StockReturn"],[DATE,SYMBOL,TIME,DOUBLE,DOUBLE,DOUBLE])
+
+    for(current_day in trading_days){
+        for(stock in stocks){
+            temp_R,temp_feature = R_square(feature_file,stock,current_day,limitations)
+            temp_feature.addColumn(["Date","Stockcode"],[DATE,SYMBOL])
+            update temp_feature set Date = current_day
+            update temp_feature set Stockcode = regexReplace(stock,"[a-z]","")
+            temp_feature.reorderColumns!(["Date","Stockcode","MarketTime","feature","Price","StockReturn"])
+            feature.append!(temp_feature)
+            insert into res values(current_day,regexReplace(stock,"[a-z]",""),temp_R)
+        }
+    }
+    return res,feature
+}
+
+def file_time_process(time_stamps,method){
+    start_time = first(time_stamps)
+    end_time = last(time_stamps)
+    fre = duration(second(time_stamps[1])-second(time_stamps[0])+"s")
+    limitations = dict(["start_date","end_date","start_time","end_time","frequency","file_flag","method"],[date(start_time),date(end_time),time(start_time),time(end_time),fre,1,method])
+    return limitations
+}
+
+def process_datetime(start_date_str, end_date_str, start_time_str, end_time_str,frequency,method){
+    start_date = temporalParse(start_date_str,"yyyy.MM.dd")
+    end_date = temporalParse(end_date_str,"yyyy.MM.dd")
+    start_time = temporalParse(start_time_str,"HH:mm:ss")
+    end_time = temporalParse(end_time_str,"HH:mm:ss")
+    limitations = dict(["start_date","end_date","start_time","end_time","frequency","file_flag","method"],[start_date,end_date,start_time,end_time,duration(frequency),0,method])
+    return limitations
+}
+
+def readfile_caculate(filepath,method){
+    feature_file = loadText(filename = filepath, containHeader = true)
+    file_header = columnNames(feature_file)
+    stocks = file_header[1:]
+    limitations = file_time_process(feature_file[file_header[0]],method)
+    return loop_caculate(feature_file,limitations,stocks)
+}
+
+def setting_caculate(stocks, start_date_str, end_date_str, start_time_str, end_time_str, frequency, method){
+    limitations = process_datetime(start_date_str, end_date_str, start_time_str, end_time_str,frequency, method)
+    return loop_caculate(,limitations,stocks)
+}
+
+test,feature = readfile_caculate("/home/lilh/stock_data.csv","All")
+// test,feature = setting_caculate(["000001","000002"],"2022.01.04","2022.01.04","09:00:00","15:00:00","3s","ALL")

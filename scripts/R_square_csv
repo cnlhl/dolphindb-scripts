@@ -2,11 +2,11 @@ def each_return(time0,time1){
     return (time1/time0-1)
 }
 
-def get_target_stock(start_date,end_date,target_stock,horizen){
+def gen_returns_by_limit(time_limit,current_stock){
     trans = loadTable("dfs://history","transBook")
-    trans = select * from trans where Date>=start_date and Date<=end_date and StockCode=target_stock and CancelFlag="F"
+    trans = select * from trans where Date>=time_limit["start_date"] and Date<=time_limit["end_date"] and StockCode=current_stock and CancelFlag="F"
     update trans set Timestamp=concatDateTime(Date,TransactionTime)
-    trans = select last(Price)as Price from trans group by interval(Timestamp,horizen,"prev") as Time
+    trans = select last(Price)as Price from trans group by interval(Timestamp,time_limit["horizon"],"prev",closed = "right",label = "right") as Time
     update trans set stock_return = eachPost(each_return,Price)
     return trans
 }
@@ -23,31 +23,41 @@ def R_gen(t, method="ALL"){
     return res["RegressionStat"]["statistics"][0]
 }
 
-def readdata(filepath,start_date,end_date,horizen,method="ALL"){
-    file_in = loadText(filename=filepath,containHeader=true)
-    names = columnNames(file_in)
-    R = array(DOUBLE, 0)
-    for(i in 1..(size(names)-1)){
-        print(i)
-        target_stock = names[i][1:]
-        tmp_tb=table(file_in[names[0]],file_in[names[i]] as feature_value)
-        tmp_trans=get_target_stock(start_date,end_date,target_stock,horizen)
-        tb = select * from tmp_tb left join tmp_trans on tmp_tb.Timestamp=tmp_trans.Time
-        R.append!(R_gen(tb,method))
-    }
-    return avg(R)
+def process_date(start_date_str, end_date_str,horizon){
+    start_date = temporalParse(start_date_str,"yyyy.MM.dd")
+    end_date = temporalParse(end_date_str,"yyyy.MM.dd")
+    time_limitation = dict(["start_date","end_date","horizon"],[start_date,end_date,duration(horizon)])
+    return time_limitation
 }
 
+def R_gen_from_file(filepath,start_date,end_date,horizon,method="ALL"){
+    time_limit = process_date(start_date,end_date, horizon)
 
+    file_in = loadText(filename=filepath,containHeader=true)
+    table_headers = columnNames(file_in)
 
-start_date = 2022.09.01
-end_date = 2022.09.01
-horizen = 15m
-filepath = "/home/ddb/stock_data.csv"
+    res = table(1:0,["Stockcode","R"],[SYMBOL,DOUBLE])
+    for(i in 1..(size(table_headers)-1)){
+        current_stock = table_headers[i][1:]
+        current_stock_feature=table(file_in[table_headers[0]],file_in[table_headers[i]] as feature_value)
+        
+        tmp_trans = gen_returns_by_limit(time_limit,current_stock)
+        current_stock_feature = select * from current_stock_feature where time(Timestamp) <= 11:30:00 or time(Timestamp) >= 13:00:00
+        tmp_tb = select * from current_stock_feature left join tmp_trans on current_stock_feature.Timestamp=tmp_trans.Time
+        temp_R = R_gen(tmp_tb,method)
+        insert into res values(current_stock,temp_R)
+    }
+    return res
+}
 
-a=readdata(filepath,start_date,end_date,horizen)
+start_date = `2022.09.01
+end_date = `2022.09.01
+horizon = `15m
+filepath = "/home/lilh/stock_data.csv"
+
+a=R_gen_from_file(filepath,start_date,end_date,horizon)
 a
 
-//tb1 = table(tb[s[0]],tb[s[1]])
+//tb1 = table(tmp_tb[s[0]],tmp_tb[s[1]])
 
 

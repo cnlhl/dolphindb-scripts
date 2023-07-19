@@ -178,12 +178,12 @@ class H5Level2Reader:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract stock depth/trans/order data from hdf5 file.")
     #parser.add_argument("today", help="date in format YYYYMMDD")
-    parser.add_argument("-p", "--path", default="/mnt/PublicData/Level2withSHOrder", help="Path to data file having date/{depth_market.transaction,order}.h5 files")
-    parser.add_argument("-s", "--savepath", default="/mnt/SandboxData/Level2CSV/depth")
+    parser.add_argument("-p", "--path", default="/mnt/StockLevelII/V2/Tdf", help="Path to data file having date/{depth_market.transaction,order}.h5 files")
+    parser.add_argument("-s", "--savepath", default="/mnt/StockLevelII/Level2CSV/depth")
     args = parser.parse_args()
 
-    start_day = 20221125
-    end_day = 20221231
+    start_day = 20220103
+    end_day = 20220104
 
     
     # target_days = [20210924,20211011,20211217]
