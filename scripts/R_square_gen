@@ -29,7 +29,6 @@ def feature_gen(transtb,ordertb,depthtb) {
     t3 = select t2.*, depthtb.Close, max((t2.Price / depthtb.Close - 1), -0.2) as diff from t2 inner join depthtb on t2.three=depthtb.DepthMarketTime where t2.Price < depthtb.Close
     t4 = select three, wavg(diff, Volume) as feature from t3 group by three
     result = select three as MarketTime, feature from t4
-    print(result)
     return result
   }
 
@@ -67,8 +66,13 @@ def R_square_gen(target_stock, string_date ,horizen, method = "ALL"){
     order_d = select * from ordertb where Date = target_date and StockCode = target_stock
     return_tb = return_gen(trans_d,target_date,target_stock,duration(horizen))
     feature_tb = feature_gen(trans_d,order_d,depth_d)
-    return R_gen(return_tb,feature_tb,method)
+    try{
+        return R_gen(return_tb,feature_tb,method)
+    }catch(ex){
+        print("error when processing stock: "+target_stock)
+        print("detail:",ex)
+    }
 }
 
-R = R_square_gen("000002","20220307","3s","ALL")
+R = R_square_gen("002475","20220104","3s","ALL")
 print(R)

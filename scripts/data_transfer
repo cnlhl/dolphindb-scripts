@@ -1,0 +1,11 @@
+def writeData(dbName,tableName,t) : loadTable(dbName,tableName).append!(t)
+def synDataBaseOnline(restoreServerIP,restoreServerPort,writeData=writeData){
+	t = select * from loadTable("dfs://stock_info","calendar") 
+	conn = xdb(restoreServerIP,restoreServerPort)
+	conn(login{`admin,`123456})
+	conn(writeData{"dfs://stock_info","calendar",t})
+}
+login(`admin,`123456)
+restoreServerIP = '192.168.0.202'
+restoreServerPort = 8848
+synDataBaseOnline(restoreServerIP=restoreServerIP,restoreServerPort=restoreServerPort)

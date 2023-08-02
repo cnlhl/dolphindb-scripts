@@ -1,3 +1,0 @@
-tb = loadTable("dfs://history","orderBook")
-
-select top 100* from tb
