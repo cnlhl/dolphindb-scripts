@@ -1,0 +1,56 @@
+def create_order_table(dbName,tableName){ 
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+		// return
+	columns =`Date`StockCode`OriginOrderSeqNo`SeqNo`ChannelNo`TransactionTime`Price`Volume`BSFlag`OrderType`BizIndex`HostTime
+	type=[DATE,SYMBOL,INT,INT,INT,TIME,LONG,INT,SYMBOL,SYMBOL,INT,TIME]
+	orderData = table(1:0, columns,type)
+	//db.createPartitionedTable(orderData, tableName,`Date`StockCode)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`StockCode, sortColumns=`StockCode`Date, keepDuplicates=ALL)
+   }
+
+def create_trans_table(dbName,tableName){  
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+		// return
+	columns =`Date`StockCode`TransactionTime`SeqNo`ChannelNo`Price`Volume`Amount`BSFlag`CancelFlag`BidOrderSeqNo`AskOrderSeqNo`BizIndex`HostTime
+	type=[DATE,SYMBOL,TIME,INT,INT,LONG,INT,DOUBLE,SYMBOL,SYMBOL,INT,INT,INT,TIME]
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`StockCode, sortColumns=`StockCode`Date, keepDuplicates=ALL)
+   }
+
+def create_depth_table(dbName,tableName){  
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		dropTable(db,tableName)
+		// return
+	columns =	`Date`StockCode`DepthMarketTime`Status`PreClose`Open`High`Low`Close`AskPrice1`AskPrice2`AskPrice3`AskPrice4`AskPrice5`AskPrice6`AskPrice7`AskPrice8`AskPrice9`AskPrice10`AskVol1`AskVol2`AskVol3`AskVol4`AskVol5`AskVol6`AskVol7`AskVol8`AskVol9`AskVol10`BidPrice1`BidPrice2`BidPrice3`BidPrice4`BidPrice5`BidPrice6`BidPrice7`BidPrice8`BidPrice9`BidPrice10`BidVol1`BidVol2`BidVol3`BidVol4`BidVol5`BidVol6`BidVol7`BidVol8`BidVol9`BidVol10`Trades`Volume`Turnover`TotalBidVol`TotalAskVol`WeightedAvgBidPrice`WeightedAvgAskPrice`HighLimit`LowLimit`HostTime
+	type=		[DATE,SYMBOL,	TIME,			INT,	LONG,	LONG,LONG,LONG,	LONG,LONG,		LONG,	LONG,		LONG,	LONG,		LONG,	LONG,		LONG,	LONG,		LONG,		INT,	INT,	INT,	INT,	INT,	INT,	INT,	INT,	INT,	INT,	LONG,	LONG,		LONG,	LONG,		LONG,	LONG,		LONG,	LONG,		LONG,	LONG,		INT,	INT,	INT,	INT,	INT,	INT,	INT,	INT,	INT,	INT,	INT,	INT,	DOUBLE,INT,			INT,		LONG,				LONG,				LONG,		LONG,	TIME]
+	orderData = table(1:0, columns,type)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date`StockCode, sortColumns=`StockCode`Date, keepDuplicates=ALL)
+   }
+
+   def create_calendar_table(dbName,tableName){ 
+	db=database(directory=dbName);
+	if(existsTable(dbName,tableName))
+		//dropTable(db,tableName)
+		return
+	columns =["Date"]
+	type=[DATE]
+	orderData = table(1:0, columns,type)
+	//db.createPartitionedTable(orderData, tableName,`Date`StockCode)
+	db.createPartitionedTable(table=orderData, tableName=tableName, partitionColumns=`Date, sortColumns=`Date, keepDuplicates=ALL)
+   }
+
+dbname = "dfs://stock_history"
+depthtablename = "depthBook"
+transtablename = "transBook"
+ordertablename = "orderBook"
+
+create_order_table(dbname,ordertablename)
+create_depth_table(dbname,depthtablename)
+create_trans_table(dbname,transtablename)
+
+// create_calendar_table("dfs://stock_info","calendar")

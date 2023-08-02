@@ -1,4 +1,1 @@
-tb = loadText("/home/ddb/SEC_Sector",,,,,true)
-tb.rename!("col0","Date")
-db = database("dfs://stock_info")
-savePartition(db,tb,"SEC_Sector")
+select top 100* from loadTable("dfs://stock_history","depthBook")
